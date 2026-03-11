@@ -1,0 +1,67 @@
+{
+  "projectType": "frontend",
+  "projectName": "Inmobiliaria Web",
+  "projectDescription": "Web application for managing real estate properties and categories with a Bootstrap-based interface.",
+  "theme": "palm",
+  "primaryColor": "#007bff",
+  "lightColor": "#0d6efd",
+  "darkColor": "#0056b3",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "installation"]
+          },
+          {
+            "group": "Core Features",
+            "pages": ["features/product-management", "features/category-management", "features/dashboard"]
+          },
+          {
+            "group": "User Interface",
+            "pages": ["ui/navigation", "ui/forms", "ui/tables", "ui/filtering-sorting"]
+          },
+          {
+            "group": "Development",
+            "pages": ["development/project-structure", "development/configuration", "development/api-integration"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Backend Endpoints",
+            "pages": ["api/overview", "api/products", "api/categories"]
+          },
+          {
+            "group": "JavaScript Modules",
+            "pages": ["api/productos-js", "api/categorias-js", "api/resumen-js", "api/utilities"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Product (property) CRUD operations with pagination",
+    "Category management with active/inactive status",
+    "Advanced filtering by name, brand, category, and price range",
+    "Real-time dashboard with inventory statistics",
+    "Sortable tables with dynamic pagination",
+    "Bootstrap 5-based responsive UI"
+  ],
+  "publicApiSurface": [
+    "obtenerProductos(pagina)",
+    "registrarProducto(event)",
+    "actualizarProducto(event)",
+    "eliminarProducto(id)",
+    "obtenerCategorias(pagina)",
+    "registrarCategoria(event)",
+    "actualizarCategoria(event)",
+    "eliminarCategoria(id)",
+    "obtenerResumen()",
+    "loadPage(url)"
+  ]
+}
