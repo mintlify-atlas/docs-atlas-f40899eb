@@ -1,0 +1,563 @@
+---
+title: 'Category Management'
+description: 'Comprehensive guide to managing product categories with CRUD operations, filtering, sorting, and active/inactive status control'
+---
+
+## Overview
+
+The Category Management module enables complete control over product categories. Categories organize products and can be set as active or inactive to control their visibility and usage throughout the system.
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="Category CRUD" icon="folder">
+    Create, read, update, and delete categories
+  </Card>
+  <Card title="Active Status Control" icon="toggle-on">
+    Enable or disable categories
+  </Card>
+  <Card title="Advanced Filtering" icon="filter">
+    Filter by code, name, and active status
+  </Card>
+  <Card title="Sorting & Pagination" icon="sort">
+    Sort by any column with paginated results
+  </Card>
+</CardGroup>
+
+## Listing Categories
+
+Categories are retrieved from the backend with full support for pagination, sorting, and filtering.
+
+### Fetching Categories
+
+The `obtenerCategorias()` function handles API requests:
+
+```javascript
+function obtenerCategorias(pagina = 0) {
+  let url = `http://localhost:8080/api/categoria/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+
+  // Get filter values
+  const codigo = document.getElementById("filtroCodigo")?.value.trim();
+  const nombre = document.getElementById("filtroNombre")?.value.trim();
+  const activo = document.getElementById("filtroActivo")?.value;
+
+  // Add filters to URL if they have values
+  if (codigo) {
+    url += `&codigo=${encodeURIComponent(codigo)}`;
+  }
+  if (nombre) {
+    url += `&nombre=${encodeURIComponent(nombre)}`;
+  }
+  if (activo !== "") {
+    url += `&activo=${activo}`;
+  }
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      const lista = Array.isArray(data) ? data : data.content || [];
+      categoriasGlobales = lista;
+      paginaActual = data.number || 0;
+      totalPaginas = data.totalPages || 1;
+      renderizarCategorias(categoriasGlobales);
+      actualizarControlesPaginacion();
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+<Note>
+  The API returns paginated data with 20 categories per page. The response includes `content` (category array), `number` (current page), and `totalPages` (total page count).
+</Note>
+
+### Rendering Categories
+
+Categories are displayed in a table with edit and delete actions:
+
+```javascript
+function renderizarCategorias(categorias) {
+  if (!tblCategorias) return;
+
+  tblCategorias.innerHTML = categorias
+    .map(
+      (categoria) => `
+        <tr>
+          <td>${categoria.codigo || ""}</td>
+          <td>${categoria.nombre || ""}</td>
+          <td>${categoria.descripcion || ""}</td>
+          <td>${categoria.activo ? "Sí" : "No"}</td>
+          <td style="text-align: center;">
+            <button class="edit-button" onclick="editarCategoria('${categoria.id}')" title="Editar">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+            <button class="delete-button" onclick="eliminarCategoria('${categoria.id}')" title="Eliminar">
+              <i class="bi bi-trash-fill"></i>
+            </button>
+          </td>
+        </tr>
+      `
+    )
+    .join("");
+}
+```
+
+## Filtering Categories
+
+The system provides three filter options that can be combined:
+
+<Steps>
+  <Step title="Code Filter">
+    Filter categories by their unique code using the `filtroCodigo` input field.
+  </Step>
+  
+  <Step title="Name Filter">
+    Search categories by name using the `filtroNombre` input field. Supports partial matching.
+  </Step>
+  
+  <Step title="Active Status Filter">
+    Filter by active status using the `filtroActivo` dropdown:
+    - **Todos**: Show all categories
+    - **Sí**: Show only active categories
+    - **No**: Show only inactive categories
+  </Step>
+</Steps>
+
+### Clearing Filters
+
+```javascript
+function limpiarFiltros() {
+  document.getElementById("filtroCodigo").value = "";
+  document.getElementById("filtroNombre").value = "";
+  document.getElementById("filtroActivo").value = "";
+  obtenerCategorias(0);
+}
+```
+
+<Tip>
+  Click the "Limpiar" button to reset all filters and return to the first page of unfiltered results.
+</Tip>
+
+## Sorting Categories
+
+Categories can be sorted by clicking on column headers:
+
+```javascript
+function ordenarPor(campo) {
+  sortHelper.ordenarPor(campo, () => {
+    sortHelper.actualizarIconos(["codigo", "nombre", "activo"]);
+    obtenerCategorias(paginaActual);
+  });
+}
+```
+
+### Sortable Columns
+
+- **Código**: Sort by category code
+- **Nombre**: Sort alphabetically by name
+- **Activo**: Sort by active status (active first or inactive first)
+
+<Note>
+  The sort icons automatically update to show the current sort direction (ascending or descending). Click the same column again to reverse the sort order.
+</Note>
+
+## Pagination
+
+### Pagination Controls
+
+The pagination system mirrors the product pagination:
+
+```javascript
+function actualizarControlesPaginacion() {
+  const paginacionDiv = document.getElementById("paginacion");
+  if (!paginacionDiv) return;
+
+  const btnAnterior = document.getElementById("btnAnterior");
+  const btnSiguiente = document.getElementById("btnSiguiente");
+  const infoPagina = document.getElementById("infoPagina");
+
+  if (btnAnterior) btnAnterior.disabled = paginaActual === 0;
+  if (btnSiguiente) btnSiguiente.disabled = paginaActual >= totalPaginas - 1;
+  if (infoPagina)
+    infoPagina.textContent = `Página ${paginaActual + 1} de ${totalPaginas}`;
+}
+```
+
+### Navigation Functions
+
+```javascript
+function paginaAnterior() {
+  if (paginaActual > 0) {
+    obtenerCategorias(paginaActual - 1);
+  }
+}
+
+function paginaSiguiente() {
+  if (paginaActual < totalPaginas - 1) {
+    obtenerCategorias(paginaActual + 1);
+  }
+}
+```
+
+## Creating Categories
+
+### Category Registration Form
+
+New categories are created through a registration form:
+
+```javascript
+async function registrarCategoria(event) {
+  event.preventDefault();
+  
+  const categoria = {
+    codigo: document.getElementById("code").value,
+    nombre: document.getElementById("name").value,
+    descripcion: document.getElementById("description").value,
+    activo: document.getElementById("active").value === "1",
+  };
+
+  try {
+    const response = await fetch(
+      "http://localhost:8080/api/categoria/registrar",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(categoria),
+      }
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      
+      // Handle validation errors
+      if (errorData.errores) {
+        const errores = errorData.errores;
+        let mensajes = [];
+        
+        if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+        if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+        if (errores.descripcion)
+          mensajes.push(`Descripción: ${errores.descripcion}`);
+        
+        if (mensajes.length > 0) {
+          alert(mensajes.join("\n"));
+        } else {
+          alert(errorData.error || "No se logró crear la categoría");
+        }
+      }
+      return;
+    }
+    
+    alert("Categoria registrada exitosamente");
+    location.href = "categorias.html";
+  } catch (error) {
+    return console.error("Error:", error);
+  }
+}
+```
+
+<Warning>
+  **Required Fields:**
+  - **codigo**: Unique category code
+  - **nombre**: Category name
+  - **descripcion**: Category description
+  - **activo**: Active status ("1" for active, "0" for inactive)
+  
+  The backend validates these fields and returns specific error messages for validation failures.
+</Warning>
+
+## Updating Categories
+
+<Steps>
+  <Step title="Navigate to Edit Page">
+    When the edit button is clicked, the category data is stored in sessionStorage:
+
+    ```javascript
+    function editarCategoria(id) {
+      // Find the category in the global array
+      const categoria = categoriasGlobales.find((c) => c.id == id);
+      
+      if (categoria) {
+        // Save to sessionStorage for use on the edit page
+        sessionStorage.setItem("categoriaEditar", JSON.stringify(categoria));
+      }
+      
+      window.location.href = `editarCategoria.html?id=${id}`;
+    }
+    ```
+  </Step>
+
+  <Step title="Load Category Data">
+    On the edit page, the category data is retrieved and populated:
+
+    ```javascript
+    function cargarDatosCategoria() {
+      // Get the category from sessionStorage
+      const categoriaStr = sessionStorage.getItem("categoriaEditar");
+      
+      if (categoriaStr) {
+        const categoria = JSON.parse(categoriaStr);
+        
+        document.getElementById("code").value = categoria.codigo || "";
+        document.getElementById("name").value = categoria.nombre || "";
+        document.getElementById("description").value = categoria.descripcion || "";
+        document.getElementById("active").value = categoria.activo ? "1" : "0";
+        
+        // Clear sessionStorage after loading
+        sessionStorage.removeItem("categoriaEditar");
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Submit Update">
+    The update is sent to the backend:
+
+    ```javascript
+    function actualizarCategoria(event) {
+      event.preventDefault();
+      const id = new URLSearchParams(window.location.search).get("id");
+      
+      const categoria = {
+        codigo: document.getElementById("code").value,
+        nombre: document.getElementById("name").value,
+        descripcion: document.getElementById("description").value,
+        activo: document.getElementById("active").value === "1",
+      };
+      
+      fetch(`http://localhost:8080/api/categoria/actualizar/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(categoria),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json();
+            // Handle validation errors
+            if (errorData.errores) {
+              const errores = errorData.errores;
+              let mensajes = [];
+              if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+              if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+              alert(mensajes.join("\n"));
+            }
+            return;
+          }
+          alert("Categoria actualizada exitosamente");
+          location.href = "categorias.html";
+        })
+        .catch((error) => console.error("Error:", error));
+    }
+    ```
+  </Step>
+</Steps>
+
+## Deleting Categories
+
+Categories can be deleted with a confirmation prompt:
+
+```javascript
+function eliminarCategoria(id) {
+  if (!confirm("¿Está seguro de eliminar la categoría?")) return;
+
+  fetch(`http://localhost:8080/api/categoria/${id}`, {
+    method: "DELETE",
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          const mensajeError =
+            errorData.error || "Error al eliminar la categoría";
+          alert(mensajeError);
+        } catch (e) {
+          alert("Error al eliminar la categoría");
+        }
+        return;
+      }
+      alert("Categoría eliminada");
+      obtenerCategorias();
+    })
+    .catch(() => {
+      alert("Error de conexión al intentar eliminar la categoría");
+    });
+}
+```
+
+<Warning>
+  **Deletion Restrictions:**
+  - Categories with associated products cannot be deleted
+  - The backend will return an error if the category is in use
+  - Always confirm deletion before proceeding
+  - Deletion is permanent and cannot be undone
+</Warning>
+
+## Category Data Structure
+
+Each category contains the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | String | Unique category identifier |
+| `codigo` | String | Category code |
+| `nombre` | String | Category name |
+| `descripcion` | String | Category description |
+| `activo` | Boolean | Active status (true/false) |
+
+## Active vs Inactive Categories
+
+### Active Categories
+
+<Card title="Active Categories" icon="check-circle">
+  Active categories are available for:
+  - Product assignment
+  - Filtering in product lists
+  - Display in dropdowns
+  - Inclusion in dashboard statistics
+</Card>
+
+### Inactive Categories
+
+<Card title="Inactive Categories" icon="x-circle">
+  Inactive categories:
+  - Are hidden from product assignment dropdowns
+  - Still appear in the category management list
+  - Can be reactivated at any time
+  - Existing products keep their inactive category assignment
+</Card>
+
+<Tip>
+  Instead of deleting categories with existing products, consider marking them as inactive. This preserves historical data while preventing new products from using the category.
+</Tip>
+
+## Client-Side Filtering
+
+In addition to server-side filtering, a client-side filter function is available:
+
+```javascript
+function filtrarCategorias() {
+  const input = document.getElementById("filtroGeneral");
+  if (!input) return;
+
+  const filtroGeneral = input.value.toLowerCase();
+  const filtradas = categoriasGlobales.filter((categoria) => {
+    const codigo = (categoria.codigo || "").toString().toLowerCase();
+    const nombre = (categoria.nombre || "").toString().toLowerCase();
+    const descripcion = (categoria.descripcion || "").toString().toLowerCase();
+    const activo = (categoria.activo ? "si" : "no").toLowerCase();
+    return (
+      codigo.includes(filtroGeneral) ||
+      nombre.includes(filtroGeneral) ||
+      descripcion.includes(filtroGeneral) ||
+      activo.includes(filtroGeneral)
+    );
+  });
+
+  renderizarCategorias(filtradas);
+}
+```
+
+<Note>
+  This function filters the currently loaded categories without making an API call. It searches across all visible fields including code, name, description, and active status.
+</Note>
+
+## UI Components
+
+### Filter Panel
+
+The filter panel includes:
+
+<CardGroup cols={3}>
+  <Card title="Code Input" icon="hashtag">
+    Text field for filtering by category code
+  </Card>
+  <Card title="Name Input" icon="font">
+    Text field for filtering by category name
+  </Card>
+  <Card title="Active Dropdown" icon="toggle-on">
+    Select active, inactive, or all categories
+  </Card>
+</CardGroup>
+
+### Category Table
+
+The table displays:
+- **Código** (sortable): Category code
+- **Nombre** (sortable): Category name
+- **Descripción**: Category description
+- **Activo** (sortable): Active status (Sí/No)
+- **Acciones**: Edit and delete buttons
+
+### Action Buttons
+
+<Tabs>
+  <Tab title="Edit">
+    Opens the category edit form with pre-populated data. The category data is passed via sessionStorage to maintain state across page navigation.
+  </Tab>
+  <Tab title="Delete">
+    Prompts for confirmation before deletion. If the category has associated products, the deletion will fail with an error message.
+  </Tab>
+  <Tab title="Register">
+    Navigates to the category registration form where new categories can be created.
+  </Tab>
+</Tabs>
+
+## Integration with Products
+
+### Category Dropdown in Product Forms
+
+Categories are loaded into product forms using:
+
+```javascript
+async function cargarCategoriasEnFiltro() {
+  try {
+    const response = await fetch(
+      "http://localhost:8080/api/categoria/listar-nombre"
+    );
+    const data = await response.json();
+    const categorias = Array.isArray(data) ? data : data.content || [];
+
+    const selectCategoria = document.getElementById("filtroCategoria");
+    selectCategoria.innerHTML = '<option value="">Todas</option>';
+
+    categorias.forEach((categoria) => {
+      const option = document.createElement("option");
+      option.value = categoria.id;
+      option.textContent = categoria.nombre;
+      selectCategoria.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Error al cargar categorías:", error);
+  }
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Use Descriptive Codes">
+    Use clear, consistent codes that make categories easy to identify (e.g., "ELEC" for Electronics, "HOME" for Home Goods).
+  </Step>
+  
+  <Step title="Maintain Active Status">
+    Instead of deleting categories with products, mark them inactive to preserve data integrity.
+  </Step>
+  
+  <Step title="Clear Descriptions">
+    Provide detailed descriptions to help users understand what products belong in each category.
+  </Step>
+  
+  <Step title="Error Handling">
+    Always handle API errors gracefully and display user-friendly messages.
+  </Step>
+</Steps>
+
+## Related Pages
+
+<CardGroup cols={2}>
+  <Card title="Product Management" icon="box" href="/features/product-management">
+    Manage products and assign them to categories
+  </Card>
+  <Card title="Dashboard" icon="chart-bar" href="/features/dashboard">
+    View category statistics and product distribution
+  </Card>
+</CardGroup>

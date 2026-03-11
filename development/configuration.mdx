@@ -1,0 +1,441 @@
+---
+title: Configuration
+description: Configure backend connections and application settings for Inmobiliaria Web
+icon: 'gear'
+---
+
+## Overview
+
+The Inmobiliaria Web frontend requires minimal configuration. The primary configuration task is setting the backend API URL across the JavaScript modules that communicate with the server.
+
+## Backend URL Configuration
+
+### Default Configuration
+
+By default, the application is configured to connect to a backend running on:
+
+```
+http://localhost:8080
+```
+
+<Warning>
+  The backend URL is hardcoded in multiple JavaScript files. If you change the backend URL, you must update it in all locations listed below.
+</Warning>
+
+### Files Requiring Configuration
+
+The backend URL appears in the following files:
+
+<AccordionGroup>
+<Accordion title="JS/productos.js" icon="box">
+
+**Lines to Update:** Multiple fetch calls throughout the file
+
+<CodeGroup>
+```javascript Listing Products
+function obtenerProductos(pagina = 0) {
+  let url = `http://localhost:8080/api/producto/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+  // ... filters logic
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      // ... handle response
+    });
+}
+```
+
+```javascript Registering Product
+async function registrarProducto(event) {
+  event.preventDefault();
+  const response = await fetch(
+    "http://localhost:8080/api/producto/registrar",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(producto),
+    }
+  );
+}
+```
+
+```javascript Updating Product
+async function actualizarProducto(event) {
+  const response = await fetch(
+    `http://localhost:8080/api/producto/actualizar/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(producto),
+    }
+  );
+}
+```
+
+```javascript Deleting Product
+function eliminarProducto(id) {
+  fetch(`http://localhost:8080/api/producto/${id}`, {
+    method: "DELETE",
+  })
+    .then((response) => {
+      // ... handle response
+    });
+}
+```
+
+```javascript Loading Categories for Select
+async function cargarCategorias() {
+  const response = await fetch(
+    "http://localhost:8080/api/categoria/listar-nombre"
+  );
+}
+```
+</CodeGroup>
+
+**Total Occurrences:** 6 fetch calls
+
+</Accordion>
+
+<Accordion title="JS/categorias.js" icon="tags">
+
+**Lines to Update:** Multiple fetch calls throughout the file
+
+<CodeGroup>
+```javascript Listing Categories
+function obtenerCategorias(pagina = 0) {
+  let url = `http://localhost:8080/api/categoria/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+  // ... filters logic
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      // ... handle response
+    });
+}
+```
+
+```javascript Registering Category
+async function registrarCategoria(event) {
+  const response = await fetch(
+    "http://localhost:8080/api/categoria/registrar",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(categoria),
+    }
+  );
+}
+```
+
+```javascript Updating Category
+function actualizarCategoria(event) {
+  fetch(`http://localhost:8080/api/categoria/actualizar/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(categoria),
+  });
+}
+```
+
+```javascript Deleting Category
+function eliminarCategoria(id) {
+  fetch(`http://localhost:8080/api/categoria/${id}`, {
+    method: "DELETE",
+  });
+}
+```
+</CodeGroup>
+
+**Total Occurrences:** 4 fetch calls
+
+</Accordion>
+
+<Accordion title="JS/resumen.js" icon="chart-line">
+
+**Lines to Update:** 1 fetch call
+
+```javascript JS/resumen.js
+async function obtenerResumen() {
+  try {
+    const response = await fetch("http://localhost:8080/api/producto/resumen");
+    
+    if (!response.ok) {
+      throw new Error("Error al obtener el resumen");
+    }
+    
+    const data = await response.json();
+    renderizarResumen(data);
+  } catch (error) {
+    console.error("Error al cargar el resumen:", error);
+    mostrarError();
+  }
+}
+```
+
+**Total Occurrences:** 1 fetch call
+
+</Accordion>
+</AccordionGroup>
+
+## Configuration Methods
+
+### Method 1: Manual Find and Replace
+
+Use your code editor's find and replace feature:
+
+<Steps>
+  <Step title="Open Find & Replace">
+    Use `Ctrl+H` (Windows/Linux) or `Cmd+H` (Mac) in most code editors
+  </Step>
+  
+  <Step title="Search Pattern">
+    Find: `http://localhost:8080`
+  </Step>
+  
+  <Step title="Replace With">
+    Replace with your backend URL (e.g., `https://api.example.com`)
+  </Step>
+  
+  <Step title="Apply to Files">
+    Replace in files: `JS/productos.js`, `JS/categorias.js`, `JS/resumen.js`
+  </Step>
+</Steps>
+
+### Method 2: Create a Configuration Module (Recommended)
+
+For easier maintenance, create a centralized configuration file:
+
+<Steps>
+  <Step title="Create Config File">
+    Create a new file `JS/config.js`:
+    
+    ```javascript JS/config.js
+    const API_CONFIG = {
+      baseURL: "http://localhost:8080",
+      endpoints: {
+        productos: {
+          listar: "/api/producto/listar",
+          registrar: "/api/producto/registrar",
+          actualizar: "/api/producto/actualizar",
+          eliminar: "/api/producto",
+          resumen: "/api/producto/resumen"
+        },
+        categorias: {
+          listar: "/api/categoria/listar",
+          listarNombre: "/api/categoria/listar-nombre",
+          registrar: "/api/categoria/registrar",
+          actualizar: "/api/categoria/actualizar",
+          eliminar: "/api/categoria"
+        }
+      }
+    };
+    
+    // Helper function to build full URLs
+    function buildURL(endpoint, params = {}) {
+      const url = new URL(API_CONFIG.baseURL + endpoint);
+      Object.keys(params).forEach(key => {
+        if (params[key] !== null && params[key] !== undefined) {
+          url.searchParams.append(key, params[key]);
+        }
+      });
+      return url.toString();
+    }
+    ```
+  </Step>
+  
+  <Step title="Update index.html">
+    Add config.js before other scripts:
+    
+    ```html index.html
+    <script src="/JS/config.js"></script>
+    <script src="/JS/loadPage.js"></script>
+    ```
+  </Step>
+  
+  <Step title="Update JavaScript Modules">
+    Replace hardcoded URLs with config references:
+    
+    ```javascript Before
+    fetch(`http://localhost:8080/api/producto/listar?page=${pagina}&size=20`)
+    ```
+    
+    ```javascript After
+    fetch(buildURL(API_CONFIG.endpoints.productos.listar, { page: pagina, size: 20 }))
+    ```
+  </Step>
+</Steps>
+
+## Environment-Specific Configuration
+
+For deployments to different environments (development, staging, production):
+
+### Option 1: Environment Detection
+
+```javascript JS/config.js
+const getBaseURL = () => {
+  const hostname = window.location.hostname;
+  
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:8080';
+  } else if (hostname.includes('staging')) {
+    return 'https://api-staging.example.com';
+  } else {
+    return 'https://api.example.com';
+  }
+};
+
+const API_CONFIG = {
+  baseURL: getBaseURL(),
+  // ... rest of config
+};
+```
+
+### Option 2: Build-Time Configuration
+
+Use environment variables during build (requires build tool):
+
+```javascript JS/config.js
+const API_CONFIG = {
+  baseURL: process.env.API_BASE_URL || 'http://localhost:8080',
+  // ... rest of config
+};
+```
+
+## Pagination Settings
+
+The page size for listing operations is currently hardcoded to **20 items per page**:
+
+```javascript Current Implementation
+function obtenerProductos(pagina = 0) {
+  let url = `http://localhost:8080/api/producto/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+}
+```
+
+### Customizing Page Size
+
+<Tabs>
+  <Tab title="Global Setting">
+    Add to `JS/config.js`:
+    
+    ```javascript
+    const API_CONFIG = {
+      baseURL: "http://localhost:8080",
+      pagination: {
+        defaultPageSize: 20,
+        pageSizeOptions: [10, 20, 50, 100]
+      }
+    };
+    ```
+  </Tab>
+  
+  <Tab title="Update Functions">
+    Use config value instead of hardcoded 20:
+    
+    ```javascript
+    function obtenerProductos(pagina = 0) {
+      let url = `http://localhost:8080/api/producto/listar?page=${pagina}&size=${API_CONFIG.pagination.defaultPageSize}&${sortHelper.getParams()}`;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## CORS Configuration
+
+<Note>
+  The frontend makes cross-origin requests to the backend API. Ensure your backend is configured to accept requests from your frontend domain.
+</Note>
+
+### Backend CORS Headers Required
+
+Your backend must include these headers:
+
+```
+Access-Control-Allow-Origin: http://localhost:5500
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type
+```
+
+### Development Setup
+
+When using Live Server in VS Code:
+- Frontend runs on: `http://localhost:5500` (or similar port)
+- Backend should allow: `http://localhost:5500` in CORS settings
+
+## Auto-Refresh Configuration
+
+The dashboard summary automatically refreshes every 30 seconds:
+
+```javascript JS/resumen.js (line 131)
+// Update statistics every 30 seconds
+setInterval(obtenerResumen, 30000);
+```
+
+### Customizing Refresh Interval
+
+<CodeGroup>
+```javascript Disable Auto-Refresh
+// Comment out or remove the setInterval call
+// setInterval(obtenerResumen, 30000);
+```
+
+```javascript Change Interval to 1 Minute
+setInterval(obtenerResumen, 60000); // 60000ms = 1 minute
+```
+
+```javascript Change Interval to 5 Minutes
+setInterval(obtenerResumen, 300000); // 300000ms = 5 minutes
+```
+</CodeGroup>
+
+## SessionStorage Configuration
+
+The application uses `sessionStorage` to pass data between pages for editing:
+
+```javascript JS/productos.js
+function editarProducto(id) {
+  const producto = productosGlobales.find((c) => c.id == id);
+  if (producto) {
+    sessionStorage.setItem("productoEditar", JSON.stringify(producto));
+  }
+  window.location.href = `editarProducto.html?id=${id}`;
+}
+```
+
+<Tip>
+  SessionStorage is automatically cleared when the browser tab is closed, providing good security for temporary data.
+</Tip>
+
+## Summary
+
+<CardGroup cols={2}>
+  <Card title="Required Configuration" icon="circle-check">
+    - Backend URL in 3 JavaScript files
+    - CORS settings on backend
+  </Card>
+  
+  <Card title="Optional Configuration" icon="sliders">
+    - Page size for pagination
+    - Auto-refresh intervals
+    - Environment-specific URLs
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Production Checklist:**
+  
+  - [ ] Update all backend URLs to production API
+  - [ ] Configure CORS for production domain
+  - [ ] Test all CRUD operations
+  - [ ] Verify pagination works correctly
+  - [ ] Confirm dashboard auto-refresh behavior
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Integration" icon="plug" href="/development/api-integration">
+    Learn how the frontend communicates with the backend API
+  </Card>
+  
+  <Card title="Project Structure" icon="folder-tree" href="/development/project-structure">
+    Understand the codebase organization
+  </Card>
+</CardGroup>

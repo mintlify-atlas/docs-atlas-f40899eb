@@ -1,0 +1,353 @@
+---
+title: 'Categories API'
+description: 'API endpoints for managing categories in the Inmobiliaria Web system'
+---
+
+## List Categories
+
+<CodeGroup>
+```http GET /api/categoria/listar
+GET /api/categoria/listar?page=0&size=20
+```
+</CodeGroup>
+
+Retrieve a paginated list of categories with optional filtering and sorting.
+
+### Query Parameters
+
+<ParamField query="page" type="number" default="0">
+  Page number (0-indexed)
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of items per page
+</ParamField>
+
+<ParamField query="sortBy" type="string">
+  Field to sort by (codigo, nombre, activo)
+</ParamField>
+
+<ParamField query="sortDir" type="string">
+  Sort direction: `asc` or `desc`
+</ParamField>
+
+<ParamField query="codigo" type="string">
+  Filter by category code (partial match)
+</ParamField>
+
+<ParamField query="nombre" type="string">
+  Filter by category name (partial match)
+</ParamField>
+
+<ParamField query="activo" type="boolean">
+  Filter by active status (true/false)
+</ParamField>
+
+### Response
+
+<ResponseField name="content" type="array">
+  Array of category objects
+  <Expandable title="Category Object">
+    <ResponseField name="id" type="number">
+      Category ID
+    </ResponseField>
+    <ResponseField name="codigo" type="string">
+      Category code
+    </ResponseField>
+    <ResponseField name="nombre" type="string">
+      Category name
+    </ResponseField>
+    <ResponseField name="descripcion" type="string">
+      Category description
+    </ResponseField>
+    <ResponseField name="activo" type="boolean">
+      Whether the category is active
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="number" type="number">
+  Current page number
+</ResponseField>
+
+<ResponseField name="totalPages" type="number">
+  Total number of pages
+</ResponseField>
+
+### Example Request
+
+```javascript
+fetch('http://localhost:8080/api/categoria/listar?page=0&size=20&activo=true')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+### Example Response
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "codigo": "C001",
+      "nombre": "Casas",
+      "descripcion": "Viviendas unifamiliares",
+      "activo": true
+    },
+    {
+      "id": 2,
+      "codigo": "C002",
+      "nombre": "Apartamentos",
+      "descripcion": "Unidades residenciales en edificios",
+      "activo": true
+    }
+  ],
+  "number": 0,
+  "totalPages": 3
+}
+```
+
+---
+
+## List Category Names
+
+<CodeGroup>
+```http GET /api/categoria/listar-nombre
+GET /api/categoria/listar-nombre
+```
+</CodeGroup>
+
+Retrieve a simplified list of categories with only ID and name. This endpoint is used for dropdown selectors and filters.
+
+### Response
+
+<ResponseField name="content" type="array">
+  Array of simplified category objects
+  <Expandable title="Category Object">
+    <ResponseField name="id" type="number">
+      Category ID
+    </ResponseField>
+    <ResponseField name="nombre" type="string">
+      Category name
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+```javascript
+fetch('http://localhost:8080/api/categoria/listar-nombre')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+### Example Response
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "nombre": "Casas"
+    },
+    {
+      "id": 2,
+      "nombre": "Apartamentos"
+    },
+    {
+      "id": 3,
+      "nombre": "Lotes"
+    }
+  ]
+}
+```
+
+---
+
+## Register Category
+
+<CodeGroup>
+```http POST /api/categoria/registrar
+POST /api/categoria/registrar
+Content-Type: application/json
+```
+</CodeGroup>
+
+Create a new category.
+
+### Request Body
+
+<ParamField body="codigo" type="string" required>
+  Category code (unique identifier)
+</ParamField>
+
+<ParamField body="nombre" type="string" required>
+  Category name
+</ParamField>
+
+<ParamField body="descripcion" type="string" required>
+  Category description
+</ParamField>
+
+<ParamField body="activo" type="boolean" required>
+  Whether the category is active (true/false)
+</ParamField>
+
+### Example Request
+
+```javascript
+const categoria = {
+  codigo: "C001",
+  nombre: "Casas",
+  descripcion: "Viviendas unifamiliares",
+  activo: true
+};
+
+fetch('http://localhost:8080/api/categoria/registrar', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(categoria)
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+### Success Response
+
+Returns the created category object with HTTP status 200/201.
+
+### Error Response
+
+```json
+{
+  "error": "No se logró crear la categoría",
+  "errores": {
+    "codigo": "El código ya existe",
+    "nombre": "El nombre es requerido",
+    "descripcion": "La descripción es requerida"
+  }
+}
+```
+
+---
+
+## Update Category
+
+<CodeGroup>
+```http PUT /api/categoria/actualizar/{id}
+PUT /api/categoria/actualizar/1
+Content-Type: application/json
+```
+</CodeGroup>
+
+Update an existing category.
+
+### Path Parameters
+
+<ParamField path="id" type="number" required>
+  Category ID
+</ParamField>
+
+### Request Body
+
+<ParamField body="codigo" type="string" required>
+  Category code
+</ParamField>
+
+<ParamField body="nombre" type="string" required>
+  Category name
+</ParamField>
+
+<ParamField body="descripcion" type="string" required>
+  Category description
+</ParamField>
+
+<ParamField body="activo" type="boolean" required>
+  Whether the category is active
+</ParamField>
+
+### Example Request
+
+```javascript
+const categoria = {
+  codigo: "C001",
+  nombre: "Casas Residenciales",
+  descripcion: "Viviendas unifamiliares en zonas residenciales",
+  activo: true
+};
+
+fetch('http://localhost:8080/api/categoria/actualizar/1', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(categoria)
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+### Success Response
+
+Returns the updated category object with HTTP status 200.
+
+### Error Response
+
+```json
+{
+  "error": "No se logró crear la categoría",
+  "errores": {
+    "codigo": "El código ya existe",
+    "nombre": "El nombre es requerido"
+  }
+}
+```
+
+---
+
+## Delete Category
+
+<CodeGroup>
+```http DELETE /api/categoria/{id}
+DELETE /api/categoria/1
+```
+</CodeGroup>
+
+Delete a category by ID.
+
+### Path Parameters
+
+<ParamField path="id" type="number" required>
+  Category ID
+</ParamField>
+
+### Example Request
+
+```javascript
+fetch('http://localhost:8080/api/categoria/1', {
+  method: 'DELETE'
+})
+  .then(response => {
+    if (response.ok) {
+      console.log('Categoría eliminada exitosamente');
+    }
+  });
+```
+
+### Success Response
+
+Returns HTTP status 200 or 204 on successful deletion.
+
+### Error Response
+
+```json
+{
+  "error": "Error al eliminar la categoría"
+}
+```
+
+<Note>
+  Categories that have associated products may not be deletable depending on backend constraints. The API will return an appropriate error message if deletion is not allowed.
+</Note>

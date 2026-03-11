@@ -1,80 +1,168 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart'
+description: 'Get your Inmobiliaria Web application up and running in minutes'
 ---
 
-## Get started in three steps
+## Get Started in 5 Minutes
 
-Get your documentation site running locally and make your first customization.
+This guide will help you clone the repository, start the application, and see your first property management dashboard.
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the Inmobiliaria Web project to your local machine:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    git clone <url-del-repositorio>
+    cd inmobiliaria_web
+    ```
 
-### Step 2: Deploy your changes
+    The project structure includes:
+    - `index.html` - Main application entry point
+    - `pages/` - Individual page components (home, productos, categorías)
+    - `JS/` - JavaScript modules for API integration and UI logic
+  </Step>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+  <Step title="Start the Development Server">
+    Use Live Server in VS Code to serve the application:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    <Note>
+      **VS Code Live Server Extension Required**
+      
+      Install the Live Server extension from the VS Code marketplace if you haven't already.
+    </Note>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    1. Open the project folder in VS Code
+    2. Right-click on `index.html`
+    3. Select **"Open with Live Server"**
 
-### Step 3: Go live
+    The application will open automatically at `http://127.0.0.1:5500` (or similar port).
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Configure the Backend">
+    <Warning>
+      The application requires a backend API running at `http://localhost:8080`
+    </Warning>
 
-## Next steps
+    Ensure your backend server is running and accessible. The frontend expects these endpoints:
 
-Now that you have your docs running, explore these key features:
+    ```javascript
+    // Product endpoints
+    GET  http://localhost:8080/api/producto/listar?page=0&size=20
+    POST http://localhost:8080/api/producto/registrar
+    PUT  http://localhost:8080/api/producto/actualizar/{id}
+    DELETE http://localhost:8080/api/producto/{id}
+
+    // Category endpoints  
+    GET  http://localhost:8080/api/categoria/listar?page=0&size=20
+    GET  http://localhost:8080/api/categoria/listar-nombre
+    POST http://localhost:8080/api/categoria/registrar
+    PUT  http://localhost:8080/api/categoria/actualizar/{id}
+    DELETE http://localhost:8080/api/categoria/{id}
+    ```
+
+    If your backend is running on a different port, see [Installation](/installation#backend-configuration) for configuration options.
+  </Step>
+
+  <Step title="Verify the Application">
+    Once the application loads, you should see:
+
+    - **Navigation bar** with Home, Productos, and Categorías sections
+    - **Dashboard** displaying property statistics:
+      - Total products count
+      - Total categories count
+      - Inventory value
+      - Average price
+      - Most expensive/cheapest products
+      - Distribution by category
+
+    <Note>
+      If you see empty data or errors, verify that your backend is running and returning data correctly.
+    </Note>
+  </Step>
+</Steps>
+
+## What's Next?
+
+Now that you have the application running:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Manage Products" icon="box" href="/features/product-management">
+    Learn how to create, edit, and delete property listings
+  </Card>
+  <Card title="Organize Categories" icon="tags" href="/features/category-management">
+    Set up and manage product categories
+  </Card>
+  <Card title="Configure Backend" icon="server" href="/installation#backend-configuration">
+    Customize API endpoints and connection settings
+  </Card>
+  <Card title="View Dashboard" icon="chart-bar" href="/features/dashboard">
+    Understand your analytics and statistics
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Quick Example: Fetching Products
+
+Here's how the application fetches products from the backend:
+
+```javascript
+function obtenerProductos(pagina = 0) {
+  let url = `http://localhost:8080/api/producto/listar?page=${pagina}&size=20`;
+
+  // Add filters to URL if they have values
+  const nombre = document.getElementById("filtroNombre")?.value.trim();
+  if (nombre) {
+    url += `&nombre=${encodeURIComponent(nombre)}`;
+  }
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      const lista = Array.isArray(data) ? data : data.content || [];
+      productosGlobales = lista;
+      paginaActual = data.number || 0;
+      totalPaginas = data.totalPages || 1;
+      
+      renderizarProductos(productosGlobales);
+      actualizarControlesPaginacion();
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+This function demonstrates:
+- Pagination with 20 items per page
+- Dynamic URL parameter building
+- Handling both array and paginated responses
+- Error handling with catch block
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Application shows 'Failed to fetch' errors">
+    This usually means the backend is not running or not accessible at `http://localhost:8080`.
+
+    **Solutions:**
+    1. Verify your backend server is running
+    2. Check the backend port matches (default: 8080)
+    3. Look for CORS errors in browser console
+    4. Ensure backend allows requests from your Live Server origin
+  </Accordion>
+
+  <Accordion title="Dashboard shows all zeros">
+    The dashboard displays data from the backend. Empty values mean:
+    - Backend has no data in the database
+    - Backend API is not returning data correctly
+
+    **Solutions:**
+    1. Add test data to your backend database
+    2. Check backend logs for errors
+    3. Verify API responses in browser Network tab
+  </Accordion>
+
+  <Accordion title="Live Server not working">
+    **Solutions:**
+    1. Install Live Server extension from VS Code marketplace
+    2. Try a different port if 5500 is in use
+    3. Use an alternative like `python -m http.server` or `npx serve`
+  </Accordion>
+</AccordionGroup>

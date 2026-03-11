@@ -1,0 +1,383 @@
+---
+title: Filtering and Sorting
+description: Implementation of filtering, sorting, and search functionality for data tables
+---
+
+## Overview
+
+The application implements comprehensive filtering and sorting capabilities using URL parameters sent to the backend API. Sorting is managed through a reusable `SortHelper` class.
+
+## Filter Panel
+
+Filters are displayed in a collapsible panel above the data table.
+
+### Product Filters
+
+```html
+<div class="p-1 border-bottom bg-light">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Nombre</label>
+            <input type="text" id="filtroNombre" class="form-control" 
+                   placeholder="Escriba un nombre">
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Marca</label>
+            <input type="text" id="filtroMarca" class="form-control" 
+                   placeholder="Escriba una marca">
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Categoría</label>
+            <select id="filtroCategoria" class="form-select">
+                <option value="">Todas</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Rango de precio</label>
+            <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" id="filtroPrecioMin" class="form-control" 
+                       placeholder="Min">
+                <span class="input-group-text">-</span>
+                <input type="number" id="filtroPrecioMax" class="form-control" 
+                       placeholder="Max">
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-center align-items-end col-md-2">
+            <button class="btn btn-primary me-2" onclick="obtenerProductos(0)">Buscar</button>
+            <button class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
+        </div>
+    </div>
+</div>
+```
+
+### Category Filters
+
+```html
+<div class="p-1 border-bottom bg-light">
+    <div class="row g-3 justify-content-center">
+        <div class="col-md-2">
+            <label class="form-label">Código</label>
+            <input type="text" id="filtroCodigo" class="form-control" 
+                   placeholder="Escriba un código">
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Nombre</label>
+            <input type="text" id="filtroNombre" class="form-control" 
+                   placeholder="Escriba un nombre">
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Activo</label>
+            <select id="filtroActivo" class="form-select">
+                <option value="">Todos</option>
+                <option value="true">Sí</option>
+                <option value="false">No</option>
+            </select>
+        </div>
+
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary me-2" onclick="obtenerCategorias(0)">Buscar</button>
+            <button class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
+        </div>
+    </div>
+</div>
+```
+
+## Filter Implementation
+
+### Building Filter URL
+
+Filters are appended to the API URL as query parameters:
+
+```javascript
+function obtenerProductos(pagina = 0) {
+  let url = `http://localhost:8080/api/producto/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+
+  // Get filter values
+  const nombre = document.getElementById("filtroNombre")?.value.trim();
+  const marca = document.getElementById("filtroMarca")?.value.trim();
+  const categoria = document.getElementById("filtroCategoria")?.value;
+  const precioMin = document.getElementById("filtroPrecioMin")?.value;
+  const precioMax = document.getElementById("filtroPrecioMax")?.value;
+
+  // Append filters to URL if they have values
+  if (nombre) {
+    url += `&nombre=${encodeURIComponent(nombre)}`;
+  }
+  if (marca) {
+    url += `&marca=${encodeURIComponent(marca)}`;
+  }
+  if (categoria) {
+    url += `&categoria=${encodeURIComponent(categoria)}`;
+  }
+  if (precioMin) {
+    url += `&precioMin=${encodeURIComponent(precioMin)}`;
+  }
+  if (precioMax) {
+    url += `&precioMax=${encodeURIComponent(precioMax)}`;
+  }
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      const lista = Array.isArray(data) ? data : data.content || [];
+      productosGlobales = lista;
+
+      if (!Array.isArray(data)) {
+        paginaActual = data.number || 0;
+        totalPaginas = data.totalPages || 1;
+      }
+
+      renderizarProductos(productosGlobales);
+      actualizarControlesPaginacion();
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+### Category Filters
+
+```javascript
+function obtenerCategorias(pagina = 0) {
+  let url = `http://localhost:8080/api/categoria/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+
+  const codigo = document.getElementById("filtroCodigo")?.value.trim();
+  const nombre = document.getElementById("filtroNombre")?.value.trim();
+  const activo = document.getElementById("filtroActivo")?.value;
+
+  if (codigo) {
+    url += `&codigo=${encodeURIComponent(codigo)}`;
+  }
+  if (nombre) {
+    url += `&nombre=${encodeURIComponent(nombre)}`;
+  }
+  if (activo !== "") {
+    url += `&activo=${activo}`;
+  }
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      const lista = Array.isArray(data) ? data : data.content || [];
+      categoriasGlobales = lista;
+
+      if (!Array.isArray(data)) {
+        paginaActual = data.number || 0;
+        totalPaginas = data.totalPages || 1;
+      }
+
+      renderizarCategorias(categoriasGlobales);
+      actualizarControlesPaginacion();
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+### Clear Filters Function
+
+```javascript
+function limpiarFiltros() {
+  document.getElementById("filtroNombre").value = "";
+  document.getElementById("filtroMarca").value = "";
+  document.getElementById("filtroCategoria").value = "";
+  document.getElementById("filtroPrecioMin").value = "";
+  document.getElementById("filtroPrecioMax").value = "";
+  obtenerProductos(0);
+}
+```
+
+## SortHelper Class
+
+The `SortHelper` class manages sorting state and generates URL parameters.
+
+### Class Definition
+
+```javascript
+class SortHelper {
+  constructor(campoInicial = "codigo") {
+    this.ordenActual = campoInicial;
+    this.direccionActual = "asc";
+  }
+
+  // Changes sort order for the specified field
+  ordenarPor(campo, callback) {
+    // If already sorting by this field, reverse the direction
+    if (this.ordenActual === campo) {
+      this.direccionActual = this.direccionActual === "asc" ? "desc" : "asc";
+    } else {
+      // New field, sort ascending by default
+      this.ordenActual = campo;
+      this.direccionActual = "asc";
+    }
+
+    if (callback) callback();
+  }
+
+  // Gets sort parameters for URL
+  getParams() {
+    return `sort=${this.ordenActual},${this.direccionActual}`;
+  }
+
+  // Gets current field
+  getCampo() {
+    return this.ordenActual;
+  }
+
+  // Gets current direction
+  getDireccion() {
+    return this.direccionActual;
+  }
+
+  // Updates sort icons in the table
+  actualizarIconos(campos) {
+    campos.forEach((campo) => {
+      const iconElement = document.getElementById(`icon-${campo}`);
+      if (!iconElement) return;
+
+      if (campo === this.ordenActual) {
+        // Icon based on direction
+        if (this.direccionActual === "asc") {
+          iconElement.innerHTML = '<i class="bi bi-arrow-up"></i>';
+        } else {
+          iconElement.innerHTML = '<i class="bi bi-arrow-down"></i>';
+        }
+      } else {
+        // Neutral icon
+        iconElement.innerHTML = '<i class="bi bi-arrow-down-up"></i>';
+      }
+    });
+  }
+}
+```
+
+## Using SortHelper
+
+### Initialization
+
+```javascript
+const sortHelper = new SortHelper("codigo");
+```
+
+### Sort Column Headers
+
+```html
+<th scope="col" style="cursor: pointer;" onclick="ordenarPor('codigo')">
+    Codigo <span id="icon-codigo"><i class="bi bi-arrow-down-up"></i></span>
+</th>
+<th scope="col" style="cursor: pointer;" onclick="ordenarPor('nombre')">
+    Nombre <span id="icon-nombre"><i class="bi bi-arrow-down-up"></i></span>
+</th>
+<th scope="col" style="cursor: pointer;" onclick="ordenarPor('precio')">
+    Precio <span id="icon-precio"><i class="bi bi-arrow-down-up"></i></span>
+</th>
+```
+
+### Sort Handler Function
+
+```javascript
+function ordenarPor(campo) {
+  sortHelper.ordenarPor(campo, () => {
+    sortHelper.actualizarIconos([
+      "codigo",
+      "nombre",
+      "marca",
+      "categoria",
+      "precio",
+    ]);
+    obtenerProductos(paginaActual);
+  });
+}
+```
+
+## Loading Filter Dropdowns
+
+Category filter dropdown is populated from the API:
+
+```javascript
+async function cargarCategoriasEnFiltro() {
+  try {
+    const response = await fetch(
+      "http://localhost:8080/api/categoria/listar-nombre"
+    );
+    if (!response.ok) throw new Error("Error al cargar categorías");
+
+    const data = await response.json();
+    const categorias = Array.isArray(data) ? data : data.content || [];
+
+    const selectCategoria = document.getElementById("filtroCategoria");
+    if (!selectCategoria) return;
+
+    selectCategoria.innerHTML = '<option value="">Todas</option>';
+
+    categorias.forEach((categoria) => {
+      const option = document.createElement("option");
+      option.value = categoria.id;
+      option.textContent = categoria.nombre;
+      selectCategoria.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Error al cargar categorías:", error);
+  }
+}
+
+cargarCategoriasEnFiltro();
+```
+
+## Complete Flow
+
+<Steps>
+  <Step title="User enters filter criteria">
+    User fills in filter fields (text inputs, dropdowns, number ranges).
+  </Step>
+  
+  <Step title="Click Buscar button">
+    Triggers the `obtenerProductos(0)` or `obtenerCategorias(0)` function.
+  </Step>
+  
+  <Step title="Build API URL">
+    Function reads filter values and appends them as query parameters.
+  </Step>
+  
+  <Step title="Include sort parameters">
+    Sort parameters from `sortHelper.getParams()` are added to the URL.
+  </Step>
+  
+  <Step title="Fetch filtered data">
+    API request is sent with page, size, sort, and filter parameters.
+  </Step>
+  
+  <Step title="Render results">
+    Filtered and sorted data is displayed in the table with updated pagination.
+  </Step>
+</Steps>
+
+## Sort Icons
+
+Sort direction is indicated by Bootstrap Icons:
+
+- `bi-arrow-down-up` - Column is not currently sorted
+- `bi-arrow-up` - Column is sorted ascending
+- `bi-arrow-down` - Column is sorted descending
+
+## Key Features
+
+- **Multiple Filter Types**: Text, select, number ranges
+- **URL Parameter Based**: All filtering done server-side
+- **Reusable Sort Helper**: Centralized sorting logic
+- **Visual Sort Indicators**: Icons show current sort state
+- **Clear Filters**: Easy reset to default state
+- **Pagination Aware**: Filters reset to first page
+
+<Note>
+  Filtering and sorting are performed server-side through API query parameters. The page always resets to page 0 when filters are applied.
+</Note>
+
+<Warning>
+  Make sure to use `encodeURIComponent()` when building URL parameters to properly handle special characters in filter values.
+</Warning>

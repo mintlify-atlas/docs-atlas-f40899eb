@@ -1,0 +1,447 @@
+---
+title: 'Product Management'
+description: 'Complete guide to managing products in the Inmobiliaria system including CRUD operations, filtering, sorting, and pagination'
+---
+
+## Overview
+
+The Product Management module provides a comprehensive interface for managing the product inventory. It includes features for listing, creating, updating, and deleting products with advanced filtering, sorting, and pagination capabilities.
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="Product Listing" icon="list">
+    View all products with pagination and sorting
+  </Card>
+  <Card title="Advanced Filtering" icon="filter">
+    Filter by name, brand, category, and price range
+  </Card>
+  <Card title="CRUD Operations" icon="pen-to-square">
+    Create, read, update, and delete products
+  </Card>
+  <Card title="Category Integration" icon="tags">
+    Link products to categories dynamically
+  </Card>
+</CardGroup>
+
+## Listing Products
+
+Products are fetched from the backend API with support for pagination, sorting, and filtering.
+
+### Fetching Products
+
+The `obtenerProductos()` function retrieves products from the API:
+
+```javascript
+function obtenerProductos(pagina = 0) {
+  let url = `http://localhost:8080/api/producto/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+
+  // Get filter values
+  const nombre = document.getElementById("filtroNombre")?.value.trim();
+  const marca = document.getElementById("filtroMarca")?.value.trim();
+  const categoria = document.getElementById("filtroCategoria")?.value;
+  const precioMin = document.getElementById("filtroPrecioMin")?.value;
+  const precioMax = document.getElementById("filtroPrecioMax")?.value;
+
+  // Add filters to URL if they have values
+  if (nombre) url += `&nombre=${encodeURIComponent(nombre)}`;
+  if (marca) url += `&marca=${encodeURIComponent(marca)}`;
+  if (categoria) url += `&categoria=${encodeURIComponent(categoria)}`;
+  if (precioMin) url += `&precioMin=${encodeURIComponent(precioMin)}`;
+  if (precioMax) url += `&precioMax=${encodeURIComponent(precioMax)}`;
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      const lista = Array.isArray(data) ? data : data.content || [];
+      productosGlobales = lista;
+      paginaActual = data.number || 0;
+      totalPaginas = data.totalPages || 1;
+      renderizarProductos(productosGlobales);
+      actualizarControlesPaginacion();
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+<Note>
+  The API returns a paginated response with a `content` array containing the products, along with pagination metadata like `number` (current page) and `totalPages`.
+</Note>
+
+### Rendering Products
+
+Products are displayed in a table format with action buttons:
+
+```javascript
+function renderizarProductos(productos) {
+  tablaProductos.innerHTML = productos
+    .map(
+      (producto) => `
+        <tr>
+          <td>${producto.codigo || ""}</td>
+          <td>${producto.nombre || ""}</td>
+          <td>${producto.descripcion || ""}</td>
+          <td>${producto.marca || ""}</td>
+          <td>${producto.categoria?.nombre || producto.categoria || ""}</td>
+          <td>$${producto.precio || ""}</td>
+          <td style="text-align: center;">
+            <button class="edit-button" onclick="editarProducto(${producto.id})" title="Editar">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+            <button class="delete-button" onclick="eliminarProducto(${producto.id})" title="Eliminar">
+              <i class="bi bi-trash-fill"></i>
+            </button>
+          </td>
+        </tr>
+      `
+    )
+    .join("");
+}
+```
+
+## Filtering Products
+
+The system supports multiple filter criteria that can be combined:
+
+<Steps>
+  <Step title="Name Filter">
+    Filter products by name using the `filtroNombre` input field. The filter performs a case-insensitive search.
+  </Step>
+  
+  <Step title="Brand Filter">
+    Filter by brand using the `filtroMarca` input field.
+  </Step>
+  
+  <Step title="Category Filter">
+    Select a category from the dropdown populated with active categories from the backend.
+  </Step>
+  
+  <Step title="Price Range Filter">
+    Set minimum and maximum price values using `filtroPrecioMin` and `filtroPrecioMax` inputs.
+  </Step>
+</Steps>
+
+### Clearing Filters
+
+```javascript
+function limpiarFiltros() {
+  document.getElementById("filtroNombre").value = "";
+  document.getElementById("filtroMarca").value = "";
+  document.getElementById("filtroCategoria").value = "";
+  document.getElementById("filtroPrecioMin").value = "";
+  document.getElementById("filtroPrecioMax").value = "";
+  obtenerProductos(0);
+}
+```
+
+## Sorting Products
+
+Products can be sorted by any column header using the `SortHelper` utility:
+
+```javascript
+function ordenarPor(campo) {
+  sortHelper.ordenarPor(campo, () => {
+    sortHelper.actualizarIconos([
+      "codigo",
+      "nombre",
+      "marca",
+      "categoria",
+      "precio",
+    ]);
+    obtenerProductos(paginaActual);
+  });
+}
+```
+
+<Tip>
+  Click on any column header (Codigo, Nombre, Marca, Categoria, Precio) to sort. Click again to reverse the sort order. The sort icons update automatically to show the current sort direction.
+</Tip>
+
+## Pagination
+
+### Pagination Controls
+
+The pagination system displays 20 products per page:
+
+```javascript
+function actualizarControlesPaginacion() {
+  const btnAnterior = document.getElementById("btnAnterior");
+  const btnSiguiente = document.getElementById("btnSiguiente");
+  const infoPagina = document.getElementById("infoPagina");
+
+  if (btnAnterior) btnAnterior.disabled = paginaActual === 0;
+  if (btnSiguiente) btnSiguiente.disabled = paginaActual >= totalPaginas - 1;
+  if (infoPagina)
+    infoPagina.textContent = `Página ${paginaActual + 1} de ${totalPaginas}`;
+}
+```
+
+### Navigation Functions
+
+```javascript
+function paginaAnterior() {
+  if (paginaActual > 0) {
+    obtenerProductos(paginaActual - 1);
+  }
+}
+
+function paginaSiguiente() {
+  if (paginaActual < totalPaginas - 1) {
+    obtenerProductos(paginaActual + 1);
+  }
+}
+```
+
+## Creating Products
+
+### Loading Categories
+
+Before creating a product, categories are loaded into the dropdown:
+
+```javascript
+async function cargarCategorias(categoriaPreseleccionar = null) {
+  const response = await fetch(
+    "http://localhost:8080/api/categoria/listar-nombre"
+  );
+  const data = await response.json();
+  const categorias = Array.isArray(data) ? data : data.content || [];
+
+  const selectCategoria = document.getElementById("category");
+  selectCategoria.innerHTML = '<option value="">Seleccione una categoría...</option>';
+
+  categorias.forEach((categoria) => {
+    const option = document.createElement("option");
+    option.value = categoria.id;
+    option.textContent = categoria.nombre;
+    selectCategoria.appendChild(option);
+  });
+}
+```
+
+### Registering a Product
+
+```javascript
+async function registrarProducto(event) {
+  event.preventDefault();
+
+  const producto = {
+    codigo: document.getElementById("code").value,
+    nombre: document.getElementById("name").value,
+    descripcion: document.getElementById("description").value,
+    marca: document.getElementById("brand").value,
+    precio: parseFloat(document.getElementById("price").value),
+    categoria: parseInt(document.getElementById("category").value),
+  };
+
+  const response = await fetch(
+    "http://localhost:8080/api/producto/registrar",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(producto),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    // Handle validation errors
+    if (errorData.errores) {
+      const errores = errorData.errores;
+      let mensajes = [];
+      if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+      if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+      if (errores.marca) mensajes.push(`Marca: ${errores.marca}`);
+      alert(mensajes.join("\n"));
+    }
+    return;
+  }
+
+  alert("Producto registrado exitosamente");
+  location.href = "productos.html";
+}
+```
+
+<Warning>
+  All required fields must be filled before submitting. The backend validates:
+  - **codigo**: Product code
+  - **nombre**: Product name
+  - **marca**: Brand name
+  - **precio**: Valid numeric price
+  - **categoria**: Valid category ID
+</Warning>
+
+## Updating Products
+
+<Steps>
+  <Step title="Load Product Data">
+    When editing, the product data is stored in `sessionStorage` and retrieved on the edit page:
+
+    ```javascript
+    function editarProducto(id) {
+      const producto = productosGlobales.find((c) => c.id == id);
+      if (producto) {
+        sessionStorage.setItem("productoEditar", JSON.stringify(producto));
+      }
+      window.location.href = `editarProducto.html?id=${id}`;
+    }
+    ```
+  </Step>
+
+  <Step title="Populate Form">
+    ```javascript
+    async function cargarDatosProducto() {
+      const productoStr = sessionStorage.getItem("productoEditar");
+      if (productoStr) {
+        const producto = JSON.parse(productoStr);
+        document.getElementById("code").value = producto.codigo || "";
+        document.getElementById("name").value = producto.nombre || "";
+        document.getElementById("description").value = producto.descripcion || "";
+        document.getElementById("brand").value = producto.marca || "";
+        document.getElementById("price").value = producto.precio || "";
+        await cargarCategorias(producto.categoria);
+        sessionStorage.removeItem("productoEditar");
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Submit Update">
+    ```javascript
+    async function actualizarProducto(event) {
+      event.preventDefault();
+      const id = new URLSearchParams(window.location.search).get("id");
+
+      const producto = {
+        codigo: document.getElementById("code").value,
+        nombre: document.getElementById("name").value,
+        descripcion: document.getElementById("description").value,
+        marca: document.getElementById("brand").value,
+        precio: parseFloat(document.getElementById("price").value),
+        categoria: parseInt(document.getElementById("category").value),
+      };
+
+      const response = await fetch(
+        `http://localhost:8080/api/producto/actualizar/${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(producto),
+        }
+      );
+
+      if (response.ok) {
+        alert("Producto actualizado exitosamente");
+        location.href = "productos.html";
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Deleting Products
+
+Products can be deleted with a confirmation dialog:
+
+```javascript
+function eliminarProducto(id) {
+  if (!confirm("¿Está seguro de eliminar el producto?")) return;
+
+  fetch(`http://localhost:8080/api/producto/${id}`, {
+    method: "DELETE",
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        const errorData = await response.json();
+        const mensajeError =
+          errorData.error || "No se logro eliminar el producto.";
+        alert(mensajeError);
+        return;
+      }
+      alert("Producto eliminado exitosamente.");
+      obtenerProductos();
+    })
+    .catch(() => {
+      alert("Error de conexión al intentar eliminar el producto");
+    });
+}
+```
+
+<Warning>
+  Deletion is permanent and cannot be undone. A confirmation dialog is shown before proceeding. If the product is referenced by other entities, the deletion may fail with an error message from the backend.
+</Warning>
+
+## Product Data Structure
+
+Each product contains the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | Integer | Unique product identifier |
+| `codigo` | String | Product code |
+| `nombre` | String | Product name |
+| `descripcion` | String | Product description |
+| `marca` | String | Brand name |
+| `precio` | Float | Product price |
+| `categoria` | Object/Integer | Category object or ID |
+
+## UI Components
+
+### Filter Panel
+
+The filter panel is located at the top of the products page:
+
+- **Name Input**: Text field for filtering by product name
+- **Brand Input**: Text field for filtering by brand
+- **Category Dropdown**: Select from available categories
+- **Price Range**: Min and max price inputs with currency symbol
+- **Search Button**: Apply filters
+- **Clear Button**: Reset all filters
+
+### Product Table
+
+The table displays with these columns:
+- Codigo (sortable)
+- Nombre (sortable)
+- Descripción
+- Marca (sortable)
+- Categoria (sortable)
+- Precio (sortable)
+- Acciones (Edit/Delete buttons)
+
+### Action Buttons
+
+<CardGroup cols={2}>
+  <Card title="Edit Button" icon="pencil">
+    Opens the edit form with pre-populated product data
+  </Card>
+  <Card title="Delete Button" icon="trash">
+    Prompts for confirmation before deleting
+  </Card>
+  <Card title="Register Button" icon="plus">
+    Navigates to the product registration form
+  </Card>
+  <Card title="Pagination Buttons" icon="arrows-left-right">
+    Navigate between pages of products
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Tip>
+  - Always validate user input before submitting to the API
+  - Use proper error handling to display user-friendly messages
+  - Clear sessionStorage after loading edit data to prevent stale data
+  - Encode URL parameters to handle special characters
+  - Show loading states during API calls for better UX
+</Tip>
+
+## Related Pages
+
+<CardGroup cols={2}>
+  <Card title="Category Management" icon="tags" href="/features/category-management">
+    Manage product categories
+  </Card>
+  <Card title="Dashboard" icon="chart-bar" href="/features/dashboard">
+    View product statistics and summaries
+  </Card>
+</CardGroup>

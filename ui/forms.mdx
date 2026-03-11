@@ -1,0 +1,271 @@
+---
+title: Forms
+description: Form implementations for creating and editing products and categories
+---
+
+## Overview
+
+The application uses Bootstrap 5 forms for data entry and editing. Forms are organized in a two-column layout within centered cards and include comprehensive validation.
+
+## Form Structure
+
+Forms are wrapped in a Bootstrap card component centered on the page.
+
+### Basic Form Layout
+
+```html
+<div class="container">
+    <div class="card w-75 mx-auto mt-3 mb-4">
+        <div class="card-header text-center">
+            <h5>Formulario de registro de Productos</h5>
+        </div>
+        <div class="card-body">
+            <form id="registroProductoForm" action="" method="post" 
+                  class="row justify-content-center">
+                <!-- Form fields here -->
+            </form>
+        </div>
+    </div>
+</div>
+```
+
+## Product Form Example
+
+The product registration form demonstrates a two-column layout with various input types.
+
+### Left Column Fields
+
+```html
+<div class="col-sm-6">
+    <div class="mb-3">
+        <label for="code" class="form-label">Código</label>
+        <input type="text" class="form-control" name="code" id="code" 
+               placeholder="Código" required>
+    </div>
+    <div class="mb-3">
+        <label for="brand" class="form-label">Marca</label>
+        <input type="text" class="form-control" name="brand" id="brand" 
+               placeholder="Marca" required>
+    </div>
+    <div class="mb-3">
+        <label for="category" class="form-label">Categoria</label>
+        <select class="form-select" name="category" id="category" required>
+            <option value="">Seleccione una categoría...</option>
+        </select>
+    </div>
+</div>
+```
+
+### Right Column Fields
+
+```html
+<div class="col-sm-6">
+    <div class="mb-3">
+        <label for="name" class="form-label">Nombre</label>
+        <input type="text" class="form-control" name="name" id="name" 
+               placeholder="Nombre" required>
+    </div>
+    <div class="mb-3">
+        <label for="description" class="form-label">Descripción</label>
+        <input type="text" class="form-control" name="description" id="description" 
+               placeholder="Televisor 4K" required>
+    </div>
+    <div class="mb-3">
+        <label for="price" class="form-label">Precio</label>
+        <input type="number" class="form-control" name="price" id="price" 
+               min="0.01" step="0.01" placeholder="1000" required>
+    </div>
+</div>
+```
+
+### Submit Button
+
+```html
+<div class="col-12 mt-3 d-flex justify-content-center">
+    <button type="submit" class="btn btn-primary btn-block">Guardar</button>
+</div>
+```
+
+## Category Form Example
+
+The category form uses a similar structure with different fields.
+
+```html
+<div class="col-sm-6">
+    <div class="mb-3">
+        <label for="code" class="form-label">Código</label>
+        <input type="text" class="form-control" name="code" id="code" 
+               placeholder="Código" required>
+    </div>
+    <div class="mb-3">
+        <label for="active" class="form-label">Activo</label>
+        <select class="form-select" name="active" id="active" required>
+            <option value="">Seleccione...</option>
+            <option value="1">Sí</option>
+            <option value="0">No</option>
+        </select>
+    </div>
+</div>
+```
+
+## Form Handling
+
+### Registration Form Handler
+
+```javascript
+async function registrarProducto(event) {
+  event.preventDefault();
+
+  const categoriaId = document.getElementById("category").value;
+
+  const producto = {
+    codigo: document.getElementById("code").value,
+    nombre: document.getElementById("name").value,
+    descripcion: document.getElementById("description").value,
+    marca: document.getElementById("brand").value,
+    precio: parseFloat(document.getElementById("price").value),
+    categoria: parseInt(categoriaId),
+  };
+
+  try {
+    const response = await fetch(
+      "http://localhost:8080/api/producto/registrar",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(producto),
+      }
+    );
+    
+    if (!response.ok) {
+      // Handle validation errors
+      const errorData = await response.json();
+      if (errorData.errores) {
+        const errores = errorData.errores;
+        let mensajes = [];
+        if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+        if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+        // ... more error handling
+        alert(`${mensajes.join("\n")}`);
+      }
+      return;
+    }
+    
+    alert("Producto registrado exitosamente");
+    location.href = "productos.html";
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+```
+
+### Form Initialization
+
+```javascript
+document.addEventListener('DOMContentLoaded', function () {
+    cargarCategorias();
+    const form = document.getElementById('registroProductoForm');
+    if (form) {
+        form.addEventListener('submit', registrarProducto);
+    }
+});
+```
+
+## Loading Categories for Select
+
+Category dropdowns are populated dynamically from the API:
+
+```javascript
+async function cargarCategorias(categoriaPreseleccionar = null) {
+  try {
+    const response = await fetch(
+      "http://localhost:8080/api/categoria/listar-nombre"
+    );
+    if (!response.ok) throw new Error("Error al cargar categorías");
+
+    const data = await response.json();
+    const categorias = Array.isArray(data) ? data : data.content || [];
+
+    const selectCategoria = document.getElementById("category");
+    if (!selectCategoria) return;
+
+    selectCategoria.innerHTML =
+      '<option value="">Seleccione una categoría...</option>';
+
+    categorias.forEach((categoria) => {
+      const option = document.createElement("option");
+      option.value = categoria.id;
+      option.textContent = categoria.nombre;
+      selectCategoria.appendChild(option);
+    });
+
+    // Preselect category if editing
+    if (categoriaPreseleccionar) {
+      selectCategoria.value = categoriaPreseleccionar.id || categoriaPreseleccionar;
+    }
+  } catch (error) {
+    console.error("Error al cargar categorías:", error);
+  }
+}
+```
+
+## Edit Form Pattern
+
+Edit forms load existing data using sessionStorage:
+
+```javascript
+async function cargarDatosProducto() {
+  const productoStr = sessionStorage.getItem("productoEditar");
+
+  if (productoStr) {
+    const producto = JSON.parse(productoStr);
+
+    document.getElementById("code").value = producto.codigo || "";
+    document.getElementById("name").value = producto.nombre || "";
+    document.getElementById("description").value = producto.descripcion || "";
+    document.getElementById("brand").value = producto.marca || "";
+    document.getElementById("price").value = producto.precio || "";
+
+    await cargarCategorias(producto.categoria);
+
+    sessionStorage.removeItem("productoEditar");
+  }
+}
+```
+
+## Bootstrap Form Classes
+
+<AccordionGroup>
+  <Accordion title="Form Container Classes">
+    - `card w-75 mx-auto` - Centered card at 75% width
+    - `card-header text-center` - Centered card header
+    - `card-body` - Card body container
+  </Accordion>
+
+  <Accordion title="Form Layout Classes">
+    - `row justify-content-center` - Centered row layout
+    - `col-sm-6` - Two-column layout on small screens and up
+    - `mb-3` - Margin bottom for form groups
+  </Accordion>
+
+  <Accordion title="Form Control Classes">
+    - `form-label` - Styled form labels
+    - `form-control` - Styled text inputs
+    - `form-select` - Styled select dropdowns
+    - `btn btn-primary btn-block` - Primary full-width button
+  </Accordion>
+</AccordionGroup>
+
+## Key Features
+
+- **Two-Column Layout**: Efficient use of space with responsive columns
+- **Client-Side Validation**: HTML5 `required` attributes
+- **Server-Side Validation**: Detailed error messages from API
+- **Dynamic Dropdowns**: Categories loaded from backend
+- **Session Storage**: Data transfer between list and edit pages
+
+<Warning>
+  All forms use HTML5 validation with the `required` attribute. Server-side validation errors are displayed via alert dialogs.
+</Warning>

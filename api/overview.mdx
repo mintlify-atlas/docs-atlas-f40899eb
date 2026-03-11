@@ -1,0 +1,105 @@
+---
+title: 'API Overview'
+description: 'Overview of the Inmobiliaria Web backend API endpoints'
+---
+
+## Base URL
+
+All API endpoints are relative to the base URL:
+
+```
+http://localhost:8080
+```
+
+## Response Format
+
+The API returns responses in JSON format. For paginated endpoints, responses follow this structure:
+
+```json
+{
+  "content": [],
+  "number": 0,
+  "totalPages": 1,
+  "size": 20
+}
+```
+
+<ResponseField name="content" type="array">
+  Array of items (products or categories)
+</ResponseField>
+
+<ResponseField name="number" type="number">
+  Current page number (0-indexed)
+</ResponseField>
+
+<ResponseField name="totalPages" type="number">
+  Total number of pages available
+</ResponseField>
+
+<ResponseField name="size" type="number">
+  Number of items per page
+</ResponseField>
+
+## Pagination
+
+All list endpoints support pagination with these query parameters:
+
+<ParamField query="page" type="number" default="0">
+  Page number (0-indexed)
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of items per page
+</ParamField>
+
+## Sorting
+
+List endpoints support sorting with these query parameters:
+
+<ParamField query="sortBy" type="string">
+  Field name to sort by (e.g., codigo, nombre, precio)
+</ParamField>
+
+<ParamField query="sortDir" type="string">
+  Sort direction: `asc` or `desc`
+</ParamField>
+
+## Error Handling
+
+The API returns error responses in the following format:
+
+```json
+{
+  "error": "Error message",
+  "errores": {
+    "field1": "Field-specific error message",
+    "field2": "Field-specific error message"
+  }
+}
+```
+
+<ResponseField name="error" type="string">
+  General error message
+</ResponseField>
+
+<ResponseField name="errores" type="object">
+  Object containing field-specific validation errors
+</ResponseField>
+
+## Available Endpoints
+
+### Products
+
+- [List Products](/api/products#list-products)
+- [Register Product](/api/products#register-product)
+- [Update Product](/api/products#update-product)
+- [Delete Product](/api/products#delete-product)
+- [Get Product Summary](/api/products#get-summary)
+
+### Categories
+
+- [List Categories](/api/categories#list-categories)
+- [List Category Names](/api/categories#list-category-names)
+- [Register Category](/api/categories#register-category)
+- [Update Category](/api/categories#update-category)
+- [Delete Category](/api/categories#delete-category)

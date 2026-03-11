@@ -1,0 +1,127 @@
+---
+title: Navigation
+description: Documentation for the navigation system in Inmobiliaria Web
+---
+
+## Overview
+
+The application uses a top-level navigation bar with iframe-based page loading. The navigation is implemented with Bootstrap 5 and provides a clean, modern interface for switching between main sections.
+
+## Navigation Structure
+
+The main navigation is defined in `index.html` and consists of a dark navbar with centered navigation items.
+
+### HTML Structure
+
+```html
+<nav class="navbar navbar-expand navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="#">Inmobiliaria</a>
+        <ul class="navbar-nav mx-auto">
+            <li class="nav-item mx-3">
+                <a class="nav-link fw-bold" href="#" onclick="loadPage('pages/home.html')">
+                    <i class="bi bi-house"></i> Home
+                </a>
+            </li>
+            <li class="nav-item mx-3">
+                <a class="nav-link fw-bold" href="#" onclick="loadPage('pages/productos/productos.html')">
+                    <i class="bi bi-box"></i> Productos
+                </a>
+            </li>
+            <li class="nav-item mx-3">
+                <a class="nav-link fw-bold" href="#" onclick="loadPage('pages/categorias/categorias.html')">
+                    <i class="bi bi-tags"></i> Categorías
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>
+```
+
+## Bootstrap Classes Used
+
+<AccordionGroup>
+  <Accordion title="Navbar Classes">
+    - `navbar navbar-expand navbar-dark bg-dark` - Creates a dark, always-expanded navbar
+    - `container-fluid` - Full-width container
+    - `navbar-brand fw-bold` - Brand text with bold font weight
+    - `navbar-nav mx-auto` - Centers the navigation items
+  </Accordion>
+
+  <Accordion title="Navigation Item Classes">
+    - `nav-item mx-3` - Navigation item with horizontal margin
+    - `nav-link fw-bold` - Bold navigation link
+    - Bootstrap Icons (`bi-house`, `bi-box`, `bi-tags`) for icons
+  </Accordion>
+</AccordionGroup>
+
+## Page Loading System
+
+The application uses an iframe-based navigation system where content pages are loaded dynamically.
+
+### Main Container
+
+```html
+<main style="height: calc(100vh - 56px); overflow: hidden;">
+    <iframe id="contentFrame" src="pages/home.html"
+        style="width: 100%; height: 100%; border: none; display: block;"></iframe>
+</main>
+```
+
+### Load Page Function
+
+The `loadPage()` function handles page transitions:
+
+```javascript
+const contentFrame = document.getElementById("contentFrame");
+
+const loadPage = (url) => {
+  contentFrame.src = url;
+};
+```
+
+<Note>
+  The iframe occupies the full viewport height minus the navbar height (56px) to prevent scrolling issues.
+</Note>
+
+## Implementation Steps
+
+<Steps>
+  <Step title="Set up the navbar structure">
+    Create a Bootstrap navbar with `navbar-dark bg-dark` classes and a centered navigation list using `mx-auto`.
+  </Step>
+  
+  <Step title="Add navigation items">
+    Define navigation items with Bootstrap Icons and onclick handlers that call `loadPage()`.
+  </Step>
+  
+  <Step title="Create the content iframe">
+    Add an iframe that fills the remaining viewport space and loads the default page.
+  </Step>
+  
+  <Step title="Implement the loadPage function">
+    Create a simple JavaScript function that updates the iframe's `src` attribute.
+  </Step>
+</Steps>
+
+## Key Features
+
+- **Fixed Top Navigation**: The navbar remains visible at all times
+- **Icon Integration**: Uses Bootstrap Icons for visual navigation cues
+- **Smooth Transitions**: Iframe-based loading provides seamless page transitions
+- **Full Viewport Usage**: Content area uses all available space below the navbar
+
+## Bootstrap Dependencies
+
+```html
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" 
+      rel="stylesheet" />
+
+<!-- Bootstrap Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css"
+      rel="stylesheet">
+
+<!-- Bootstrap JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+```

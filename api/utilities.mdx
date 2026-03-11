@@ -1,0 +1,372 @@
+---
+title: 'Utility Modules'
+description: 'Helper modules for sorting, page loading, and UI components'
+icon: 'wrench'
+---
+
+## Overview
+
+Utility modules provide reusable functionality across the Inmobiliaria Web application, including sorting logic, page navigation, and component rendering for headers, footers, and sidebars.
+
+## SortHelper Class
+
+### sortHelper.js
+
+A reusable class for managing table sorting with ascending/descending direction toggling and icon updates.
+
+### Constructor
+
+```javascript sortHelper.js:1-5
+class SortHelper {
+  constructor(campoInicial = "codigo") {
+    this.ordenActual = campoInicial;
+    this.direccionActual = "asc";
+  }
+}
+```
+
+<ParamField path="campoInicial" type="string" default="codigo">
+  Initial field to sort by
+</ParamField>
+
+**Properties:**
+- `ordenActual`: Current sort field
+- `direccionActual`: Current sort direction ("asc" or "desc")
+
+### Methods
+
+<Tabs>
+  <Tab title="ordenarPor()">
+    Changes sorting field and toggles direction if already sorting by that field.
+
+    <ParamField path="campo" type="string" required>
+      Field name to sort by
+    </ParamField>
+
+    <ParamField path="callback" type="Function">
+      Function to execute after updating sort state
+    </ParamField>
+
+    ```javascript sortHelper.js:7-19
+    ordenarPor(campo, callback) {
+      // Si ya está ordenando por este campo, inverte la dirección
+      if (this.ordenActual === campo) {
+        this.direccionActual = this.direccionActual === "asc" ? "desc" : "asc";
+      } else {
+        // Nuevo campo, ordenar ascendente por defecto
+        this.ordenActual = campo;
+        this.direccionActual = "asc";
+      }
+
+      if (callback) callback();
+    }
+    ```
+
+    **Behavior:**
+    - If sorting by a new field: sets to ascending
+    - If sorting by same field: toggles direction
+    - Executes callback after state update
+  </Tab>
+
+  <Tab title="getParams()">
+    Returns URL query parameters for API sorting.
+
+    <ParamField path="return" type="string">
+      URL parameter string (e.g., "sort=codigo,asc")
+    </ParamField>
+
+    ```javascript sortHelper.js:21-24
+    getParams() {
+      return `sort=${this.ordenActual},${this.direccionActual}`;
+    }
+    ```
+
+    **Example Output:**
+    ```
+    sort=nombre,desc
+    sort=precio,asc
+    ```
+  </Tab>
+
+  <Tab title="getCampo()">
+    Returns the current sort field.
+
+    <ParamField path="return" type="string">
+      Current sort field name
+    </ParamField>
+
+    ```javascript sortHelper.js:26-29
+    getCampo() {
+      return this.ordenActual;
+    }
+    ```
+  </Tab>
+
+  <Tab title="getDireccion()">
+    Returns the current sort direction.
+
+    <ParamField path="return" type="string">
+      Current direction ("asc" or "desc")
+    </ParamField>
+
+    ```javascript sortHelper.js:31-34
+    getDireccion() {
+      return this.direccionActual;
+    }
+    ```
+  </Tab>
+
+  <Tab title="actualizarIconos()">
+    Updates sort direction icons in table headers.
+
+    <ParamField path="campos" type="Array<string>" required>
+      Array of field names to update icons for
+    </ParamField>
+
+    ```javascript sortHelper.js:36-55
+    actualizarIconos(campos) {
+      campos.forEach((campo) => {
+        const iconElement = document.getElementById(`icon-${campo}`);
+        if (!iconElement) return;
+
+        if (campo === this.ordenActual) {
+          // Icono según dirección
+          if (this.direccionActual === "asc") {
+            iconElement.innerHTML = '<i class="bi bi-arrow-up"></i>';
+          } else {
+            iconElement.innerHTML = '<i class="bi bi-arrow-down"></i>';
+          }
+        } else {
+          // icono neutral
+          iconElement.innerHTML = '<i class="bi bi-arrow-down-up"></i>';
+        }
+      });
+    }
+    ```
+
+    **Icon States:**
+    - **Active ascending**: ↑ (`bi-arrow-up`)
+    - **Active descending**: ↓ (`bi-arrow-down`)
+    - **Inactive**: ↕ (`bi-arrow-down-up`)
+
+    **DOM Requirements:**
+    Elements must have IDs like `icon-codigo`, `icon-nombre`, etc.
+  </Tab>
+</Tabs>
+
+### Usage Example
+
+```javascript
+// Initialize with default sort field
+const sortHelper = new SortHelper("codigo");
+
+// Change sort field
+function ordenarPor(campo) {
+  sortHelper.ordenarPor(campo, () => {
+    sortHelper.actualizarIconos(["codigo", "nombre", "precio"]);
+    obtenerProductos(paginaActual);
+  });
+}
+
+// Build API URL with sort parameters
+const url = `http://localhost:8080/api/producto/listar?page=0&size=20&${sortHelper.getParams()}`;
+// Result: http://localhost:8080/api/producto/listar?page=0&size=20&sort=codigo,asc
+```
+
+## Page Loading
+
+### loadPage.js
+
+Simple utility for loading content into an iframe.
+
+```javascript loadPage.js:1-6
+const contentFrame = document.getElementById("contentFrame");
+
+const loadPage = (url) => {
+  contentFrame.src = url;
+};
+```
+
+<ParamField path="url" type="string" required>
+  URL of the page to load in the iframe
+</ParamField>
+
+**Global Variables:**
+- `contentFrame`: Reference to `#contentFrame` iframe element
+
+**Function:**
+- `loadPage(url)`: Sets iframe source to the specified URL
+
+### Usage
+
+```javascript
+loadPage('productos.html');
+loadPage('categorias.html');
+loadPage('resumen.html');
+```
+
+<Note>
+  This is commonly used for dashboard navigation where the main content area is an iframe.
+</Note>
+
+## UI Component Modules
+
+These modules dynamically inject HTML content into page elements.
+
+### footer.js
+
+Manages footer content rendering.
+
+```javascript footer.js:1-6
+const footer = document.getElementById("footer");
+
+const footer_content = ``;
+
+footer.innerHTML = footer_content;
+```
+
+**Structure:**
+- Gets reference to `#footer` element
+- Defines `footer_content` HTML string (currently empty)
+- Injects content into footer element
+
+### header_topbar.js
+
+Manages top navigation bar content.
+
+```javascript header_topbar.js:1-6
+const header = document.getElementById("topbar");
+
+const header_topbar = ``;
+
+header.innerHTML = header_topbar;
+```
+
+**Structure:**
+- Gets reference to `#topbar` element
+- Defines `header_topbar` HTML string (currently empty)
+- Injects content into topbar element
+
+### sidebar_menu.js
+
+Manages sidebar navigation menu.
+
+```javascript sidebar_menu.js:1-7
+const sidebar = document.getElementById("sidebar");
+
+const menu = `
+`;
+
+sidebar.innerHTML = menu;
+```
+
+**Structure:**
+- Gets reference to `#sidebar` element
+- Defines `menu` HTML string (currently empty)
+- Injects content into sidebar element
+
+## Implementation Pattern
+
+All UI component modules follow this pattern:
+
+```javascript
+// 1. Get DOM reference
+const element = document.getElementById("element-id");
+
+// 2. Define HTML content
+const content = `
+  <div>HTML content here</div>
+`;
+
+// 3. Inject into DOM
+element.innerHTML = content;
+```
+
+<Warning>
+  The footer, header, and sidebar modules currently have empty content strings. These should be populated with actual HTML markup for the application to function properly.
+</Warning>
+
+## Integration Notes
+
+### SortHelper Integration
+
+Both `productos.js` and `categorias.js` use SortHelper:
+
+```javascript productos.js:5
+const sortHelper = new SortHelper("codigo");
+```
+
+```javascript categorias.js:5
+const sortHelper = new SortHelper("codigo");
+```
+
+### Bootstrap Icons
+
+The SortHelper class uses Bootstrap Icons for visual indicators:
+- `bi-arrow-up`: Ascending sort
+- `bi-arrow-down`: Descending sort
+- `bi-arrow-down-up`: Neutral/unsorted
+
+Ensure Bootstrap Icons CSS is loaded:
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+```
+
+## Best Practices
+
+<Tabs>
+  <Tab title="SortHelper">
+    1. **Initialize once** per table/list component
+    2. **Provide callback** to ordenarPor() for data refresh
+    3. **Update icons** after every sort change
+    4. **Use consistent field names** between frontend and API
+
+    ```javascript
+    // Good
+    const sortHelper = new SortHelper("codigo");
+    sortHelper.ordenarPor("nombre", () => {
+      sortHelper.actualizarIconos(["codigo", "nombre", "precio"]);
+      fetchData();
+    });
+
+    // Bad - no callback, no icon update
+    sortHelper.ordenarPor("nombre");
+    ```
+  </Tab>
+
+  <Tab title="Page Loading">
+    1. **Check iframe exists** before calling loadPage()
+    2. **Handle loading states** for better UX
+    3. **Validate URLs** before loading
+
+    ```javascript
+    // Good
+    if (contentFrame) {
+      showLoadingSpinner();
+      loadPage('productos.html');
+      contentFrame.onload = () => hideLoadingSpinner();
+    }
+
+    // Bad - no error handling
+    loadPage(userInput);
+    ```
+  </Tab>
+
+  <Tab title="UI Components">
+    1. **Populate content strings** with actual markup
+    2. **Use template literals** for dynamic content
+    3. **Handle missing elements** gracefully
+
+    ```javascript
+    // Good
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar) {
+      const menu = `<nav>...</nav>`;
+      sidebar.innerHTML = menu;
+    }
+
+    // Bad - assumes element exists
+    sidebar.innerHTML = menu;
+    ```
+  </Tab>
+</Tabs>

@@ -1,0 +1,488 @@
+---
+title: 'Installation'
+description: 'Complete setup guide for Inmobiliaria Web application including Live Server configuration and backend requirements'
+---
+
+## Prerequisites
+
+Before installing Inmobiliaria Web, ensure you have:
+
+<CardGroup cols={2}>
+  <Card title="VS Code" icon="code">
+    Visual Studio Code with Live Server extension
+  </Card>
+  <Card title="Modern Browser" icon="globe">
+    Chrome, Firefox, Safari, or Edge (latest version)
+  </Card>
+  <Card title="Backend API" icon="server">
+    REST API running on port 8080
+  </Card>
+  <Card title="Git" icon="git-alt">
+    Git for cloning the repository
+  </Card>
+</CardGroup>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the project from your Git repository:
+
+    ```bash
+    git clone <url-del-repositorio>
+    cd inmobiliaria_web
+    ```
+
+    Your project structure should look like this:
+
+    ```
+    inmobiliaria_web/
+    ├── index.html
+    ├── pages/
+    │   ├── home.html
+    │   ├── productos/
+    │   │   ├── productos.html
+    │   │   ├── crearProducto.html
+    │   │   └── editarProducto.html
+    │   └── categorias/
+    │       ├── categorias.html
+    │       ├── crearCategoria.html
+    │       └── editarCategoria.html
+    └── JS/
+        ├── productos.js
+        ├── categorias.js
+        ├── resumen.js
+        ├── loadPage.js
+        └── ...
+    ```
+  </Step>
+
+  <Step title="Install Live Server (VS Code)">
+    Install the Live Server extension for development:
+
+    <Tabs>
+      <Tab title="VS Code Extension">
+        1. Open VS Code
+        2. Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
+        3. Search for "Live Server" by Ritwick Dey
+        4. Click **Install**
+
+        <Note>
+          Live Server automatically reloads the page when you save changes to HTML, CSS, or JS files.
+        </Note>
+      </Tab>
+      <Tab title="Alternative Servers">
+        If you prefer not to use Live Server, you can use alternatives:
+
+        **Python HTTP Server:**
+        ```bash
+        python -m http.server 5500
+        ```
+
+        **Node.js Serve:**
+        ```bash
+        npx serve -p 5500
+        ```
+
+        **PHP Built-in Server:**
+        ```bash
+        php -S localhost:5500
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Configure Live Server Settings">
+    Optimize Live Server for this application:
+
+    1. Open VS Code Settings (Ctrl+, / Cmd+,)
+    2. Search for "Live Server"
+    3. Configure these settings:
+
+    ```json
+    {
+      "liveServer.settings.port": 5500,
+      "liveServer.settings.root": "/",
+      "liveServer.settings.CustomBrowser": "chrome",
+      "liveServer.settings.NoBrowser": false,
+      "liveServer.settings.ignoreFiles": [
+        ".vscode/**",
+        "**/*.scss",
+        "**/*.sass"
+      ]
+    }
+    ```
+
+    <Accordion title="Live Server Configuration Options">
+      - **port**: Default port for the development server (5500)
+      - **root**: Root directory to serve files from
+      - **CustomBrowser**: Browser to open (chrome, firefox, edge)
+      - **NoBrowser**: Set to `true` to prevent auto-opening browser
+      - **ignoreFiles**: Files to ignore for auto-reload
+    </Accordion>
+  </Step>
+
+  <Step title="Start the Application">
+    Launch the application using Live Server:
+
+    1. Open `index.html` in VS Code
+    2. Right-click anywhere in the file
+    3. Select **"Open with Live Server"**
+
+    Or use the keyboard shortcut:
+    - **Windows/Linux**: Alt+L Alt+O
+    - **macOS**: Cmd+L Cmd+O
+
+    The application will open at:
+    ```
+    http://127.0.0.1:5500/index.html
+    ```
+  </Step>
+</Steps>
+
+## Backend Configuration
+
+The application communicates with a REST API backend running on `http://localhost:8080`.
+
+### Required Backend Endpoints
+
+Your backend must implement these endpoints:
+
+<CodeGroup>
+```javascript productos.js
+// Product Management Endpoints
+const BACKEND_URL = 'http://localhost:8080';
+
+// List products with pagination and filters
+GET `${BACKEND_URL}/api/producto/listar?page={page}&size={size}`
+// Optional query parameters:
+// - nombre: Filter by product name
+// - marca: Filter by brand
+// - categoria: Filter by category ID
+// - precioMin: Minimum price
+// - precioMax: Maximum price
+
+// Register new product
+POST `${BACKEND_URL}/api/producto/registrar`
+// Body: { codigo, nombre, descripcion, marca, precio, categoria }
+
+// Update existing product
+PUT `${BACKEND_URL}/api/producto/actualizar/{id}`
+// Body: { codigo, nombre, descripcion, marca, precio, categoria }
+
+// Delete product
+DELETE `${BACKEND_URL}/api/producto/{id}`
+```
+
+```javascript categorias.js
+// Category Management Endpoints
+const BACKEND_URL = 'http://localhost:8080';
+
+// List all categories with pagination
+GET `${BACKEND_URL}/api/categoria/listar?page={page}&size={size}`
+
+// List category names only (for dropdowns)
+GET `${BACKEND_URL}/api/categoria/listar-nombre`
+
+// Register new category
+POST `${BACKEND_URL}/api/categoria/registrar`
+// Body: { nombre, descripcion, estado }
+
+// Update existing category
+PUT `${BACKEND_URL}/api/categoria/actualizar/{id}`
+// Body: { nombre, descripcion, estado }
+
+// Delete category
+DELETE `${BACKEND_URL}/api/categoria/{id}`
+```
+</CodeGroup>
+
+### Expected Response Format
+
+The backend should return paginated responses in this format:
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "codigo": "PROD-001",
+      "nombre": "Casa en Miraflores",
+      "descripcion": "Casa moderna de 3 pisos",
+      "marca": "Premium Homes",
+      "precio": 250000.00,
+      "categoria": {
+        "id": 1,
+        "nombre": "Residencial"
+      }
+    }
+  ],
+  "number": 0,
+  "totalPages": 5,
+  "totalElements": 100,
+  "size": 20
+}
+```
+
+### Changing the Backend URL
+
+<Warning>
+  If your backend runs on a different host or port, you must update the API URLs in the JavaScript files.
+</Warning>
+
+To change the backend URL:
+
+1. Open `JS/productos.js`
+2. Find all `fetch()` calls
+3. Replace `http://localhost:8080` with your backend URL:
+
+```javascript
+// Before
+fetch(`http://localhost:8080/api/producto/listar?page=${pagina}&size=20`)
+
+// After (example with different port)
+fetch(`http://localhost:3000/api/producto/listar?page=${pagina}&size=20`)
+```
+
+<Accordion title="Files that require URL updates">
+  If you change the backend URL, update these files:
+  - `JS/productos.js` (5 fetch calls)
+  - `JS/categorias.js` (5 fetch calls)
+  - `JS/resumen.js` (summary data fetch)
+
+  Consider creating a configuration file to centralize the backend URL:
+
+  ```javascript config.js
+  const CONFIG = {
+    BACKEND_URL: 'http://localhost:8080',
+    API_PREFIX: '/api'
+  };
+
+  // Then use it in your code:
+  fetch(`${CONFIG.BACKEND_URL}${CONFIG.API_PREFIX}/producto/listar`)
+  ```
+</Accordion>
+
+## Technology Stack
+
+Inmobiliaria Web is built with:
+
+<CardGroup cols={3}>
+  <Card title="HTML5" icon="html5">
+    Semantic markup and structure
+  </Card>
+  <Card title="CSS3" icon="css3">
+    Custom styling
+  </Card>
+  <Card title="JavaScript" icon="js">
+    ES6+ features and Fetch API
+  </Card>
+  <Card title="Bootstrap 5.3.2" icon="bootstrap">
+    UI components and responsive grid
+  </Card>
+  <Card title="Bootstrap Icons" icon="icons">
+    Icon library (v1.10.0)
+  </Card>
+  <Card title="Fetch API" icon="network-wired">
+    REST API communication
+  </Card>
+</CardGroup>
+
+### CDN Dependencies
+
+The application loads these resources from CDNs:
+
+```html
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" 
+  rel="stylesheet"
+  integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" 
+  crossorigin="anonymous" />
+
+<!-- Bootstrap Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css"
+  rel="stylesheet">
+
+<!-- Bootstrap JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+  integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+  crossorigin="anonymous"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
+  integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
+  crossorigin="anonymous"></script>
+```
+
+<Note>
+  **Offline Development**: If you need to work offline, download these libraries locally and update the `<link>` and `<script>` tags to reference local files instead of CDN URLs.
+</Note>
+
+## Application Architecture
+
+Understand how the application is structured:
+
+### Page Navigation System
+
+The application uses an iframe-based navigation system:
+
+```html index.html
+<nav class="navbar navbar-expand navbar-dark bg-dark">
+  <ul class="navbar-nav">
+    <li class="nav-item">
+      <a class="nav-link" href="#" onclick="loadPage('pages/home.html')">
+        <i class="bi bi-house"></i> Home
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#" onclick="loadPage('pages/productos/productos.html')">
+        <i class="bi bi-box"></i> Productos
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<main>
+  <iframe id="contentFrame" src="pages/home.html"></iframe>
+</main>
+```
+
+```javascript loadPage.js
+const contentFrame = document.getElementById("contentFrame");
+
+const loadPage = (url) => {
+  contentFrame.src = url;
+};
+```
+
+### Data Flow
+
+1. **User Interaction** → Button click or form submission
+2. **JavaScript Handler** → Function in `productos.js` or `categorias.js`
+3. **Fetch API Call** → HTTP request to backend at `localhost:8080`
+4. **Response Processing** → Parse JSON and extract data
+5. **DOM Update** → Render data to HTML table or dashboard
+
+## Verification
+
+After installation, verify everything works:
+
+<Steps>
+  <Step title="Check Home Dashboard">
+    Navigate to the home page and verify:
+    - Total products count displays
+    - Total categories count displays
+    - Inventory value calculates correctly
+    - Product distribution by category shows
+  </Step>
+
+  <Step title="Test Product Management">
+    Go to Productos section and verify:
+    - Product list loads with pagination
+    - Filter by name, brand, category works
+    - Create, edit, delete operations succeed
+    - Validation errors display properly
+  </Step>
+
+  <Step title="Test Category Management">
+    Go to Categorías section and verify:
+    - Category list loads
+    - CRUD operations work
+    - Categories appear in product dropdowns
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="CORS errors in browser console">
+    Cross-Origin Resource Sharing (CORS) errors occur when the backend doesn't allow requests from your frontend origin.
+
+    **Backend Solution** (example for Spring Boot):
+    ```java
+    @CrossOrigin(origins = "http://127.0.0.1:5500")
+    @RestController
+    public class ProductoController {
+      // ...
+    }
+    ```
+
+    Or configure globally:
+    ```java
+    @Configuration
+    public class WebConfig implements WebMvcConfigurer {
+      @Override
+      public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/api/**")
+          .allowedOrigins("http://127.0.0.1:5500")
+          .allowedMethods("GET", "POST", "PUT", "DELETE");
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Backend returns 404 for all endpoints">
+    **Check:**
+    1. Backend server is actually running
+    2. Backend port matches (default: 8080)
+    3. API path prefix matches (`/api/producto/`, `/api/categoria/`)
+    4. Backend logs for startup errors
+
+    **Test with curl:**
+    ```bash
+    curl http://localhost:8080/api/producto/listar?page=0&size=20
+    ```
+  </Accordion>
+
+  <Accordion title="Pagination not working">
+    The backend must return responses in the expected format:
+    ```json
+    {
+      "content": [...],
+      "number": 0,
+      "totalPages": 5
+    }
+    ```
+
+    If your backend returns a flat array, modify `productos.js`:
+    ```javascript
+    // Handle flat array response
+    const lista = Array.isArray(data) ? data : data.content || [];
+    ```
+  </Accordion>
+
+  <Accordion title="Bootstrap styles not loading">
+    **Check:**
+    1. Internet connection (CDN requires online access)
+    2. Browser console for 404 errors on CSS files
+    3. Content Security Policy restrictions
+
+    **Solution**: Download Bootstrap locally:
+    ```bash
+    mkdir css js
+    # Download and save bootstrap.min.css to css/
+    # Download and save bootstrap.min.js to js/
+    ```
+
+    Update HTML:
+    ```html
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Get up and running quickly
+  </Card>
+  <Card title="Product Management" icon="box" href="/features/product-management">
+    Learn to manage property listings
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/overview">
+    Detailed backend API documentation
+  </Card>
+  <Card title="Configuration" icon="palette" href="/development/configuration">
+    Configure backend URLs and settings
+  </Card>
+</CardGroup>

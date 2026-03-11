@@ -1,0 +1,350 @@
+---
+title: 'resumen.js'
+description: 'Dashboard summary module for displaying inventory statistics and metrics'
+icon: 'chart-line'
+---
+
+## Overview
+
+The `resumen.js` module provides real-time dashboard functionality displaying comprehensive inventory statistics including total products, categories, inventory values, price analytics, and product distribution by category. The module auto-refreshes every 30 seconds.
+
+## Utility Functions
+
+### formatearMoneda()
+
+Formats numeric values as Colombian Peso (COP) currency.
+
+<ParamField path="valor" type="number" required>
+  Numeric value to format
+</ParamField>
+
+<ParamField path="return" type="string">
+  Formatted currency string (e.g., "$1.234.567")
+</ParamField>
+
+```javascript resumen.js:1-9
+function formatearMoneda(valor) {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(valor);
+}
+```
+
+**Configuration:**
+- Locale: `es-CO` (Spanish - Colombia)
+- Currency: `COP` (Colombian Peso)
+- Decimal places: 0 (whole numbers only)
+
+## Core Functions
+
+### obtenerResumen()
+
+Fetches summary statistics from the API and renders them.
+
+```javascript resumen.js:11-26
+async function obtenerResumen() {
+  try {
+    const response = await fetch("http://localhost:8080/api/producto/resumen");
+
+    if (!response.ok) {
+      throw new Error("Error al obtener el resumen");
+    }
+
+    const data = await response.json();
+    renderizarResumen(data);
+  } catch (error) {
+    console.error("Error al cargar el resumen:", error);
+    mostrarError();
+  }
+}
+```
+
+**API Endpoint:** `GET /api/producto/resumen`
+
+### renderizarResumen()
+
+Renders all summary statistics to the dashboard.
+
+<ParamField path="data" type="Object" required>
+  Summary data object from the API
+</ParamField>
+
+```javascript resumen.js:28-69
+function renderizarResumen(data) {
+  // Estadísticas principales
+  document.getElementById("resTotalProductos").textContent =
+    data.totalProductos || 0;
+  document.getElementById("resTotalCategorias").textContent =
+    data.totalCategorias || 0;
+  document.getElementById("resInventario").textContent = formatearMoneda(
+    data.valorInventario || 0
+  );
+  document.getElementById("resPromedio").textContent = formatearMoneda(
+    data.precioPromedio || 0
+  );
+
+  // Inventario por categorías
+  document.getElementById("resInventarioActivo").textContent = formatearMoneda(
+    data.valorInventarioCategoriasActivas || 0
+  );
+  document.getElementById("resInventarioInactivo").textContent =
+    formatearMoneda(data.valorInventarioCategoriasInactivas || 0);
+
+  // Producto más caro
+  if (data.productoMasCaro) {
+    document.getElementById("resMasCaroNombre").textContent =
+      data.productoMasCaro.nombre;
+    document.getElementById("resMasCaroPrecio").textContent = formatearMoneda(
+      data.productoMasCaro.precio
+    );
+  }
+
+  // Producto más barato
+  if (data.productoMasBarato) {
+    document.getElementById("resMasBaratoNombre").textContent =
+      data.productoMasBarato.nombre;
+    document.getElementById("resMasBaratoPrecio").textContent = formatearMoneda(
+      data.productoMasBarato.precio
+    );
+  }
+
+  // Productos por categoría
+  renderizarProductosPorCategoria(data.productosPorCategoria || []);
+}
+```
+
+## Data Structure
+
+### Summary Response Object
+
+<ParamField path="totalProductos" type="number">
+  Total number of products in inventory
+</ParamField>
+
+<ParamField path="totalCategorias" type="number">
+  Total number of categories
+</ParamField>
+
+<ParamField path="valorInventario" type="number">
+  Total inventory value (sum of all product prices)
+</ParamField>
+
+<ParamField path="precioPromedio" type="number">
+  Average product price
+</ParamField>
+
+<ParamField path="valorInventarioCategoriasActivas" type="number">
+  Inventory value for active categories
+</ParamField>
+
+<ParamField path="valorInventarioCategoriasInactivas" type="number">
+  Inventory value for inactive categories
+</ParamField>
+
+<ParamField path="productoMasCaro" type="Object">
+  Most expensive product object
+  - `nombre`: Product name
+  - `precio`: Product price
+</ParamField>
+
+<ParamField path="productoMasBarato" type="Object">
+  Least expensive product object
+  - `nombre`: Product name
+  - `precio`: Product price
+</ParamField>
+
+<ParamField path="productosPorCategoria" type="Array<Object>">
+  Array of product distribution by category
+  - `categoria`: Category name
+  - `cantidad`: Number of products
+</ParamField>
+
+## Category Distribution
+
+### renderizarProductosPorCategoria()
+
+Renders product distribution cards with progress bars.
+
+<ParamField path="productos" type="Array<Object>" required>
+  Array of category distribution objects
+</ParamField>
+
+```javascript resumen.js:71-111
+function renderizarProductosPorCategoria(productos) {
+  const contenedor = document.getElementById("resPorCategoria");
+
+  if (!productos || productos.length === 0) {
+    contenedor.innerHTML = '<p class="text-muted">No hay datos disponibles</p>';
+    return;
+  }
+
+  // Calcular total para porcentajes
+  const total = productos.reduce((sum, item) => sum + item.cantidad, 0);
+
+  contenedor.innerHTML = productos
+    .map((item) => {
+      const porcentaje =
+        total > 0 ? ((item.cantidad / total) * 100).toFixed(1) : 0;
+
+      return `
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">${item.categoria}</h6>
+                <span class="badge bg-primary">${item.cantidad}</span>
+              </div>
+              <div class="progress" style="height: 20px;">
+                <div class="progress-bar bg-primary" role="progressbar" 
+                     style="width: ${porcentaje}%;" 
+                     aria-valuenow="${porcentaje}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                  ${porcentaje}%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+```
+
+**Features:**
+- Calculates percentage distribution across all categories
+- Displays category name with product count badge
+- Visual progress bar showing percentage
+- Responsive 3-column grid layout (`col-md-4`)
+- Bootstrap card styling with shadows
+
+## Error Handling
+
+### mostrarError()
+
+Displays an error alert when data loading fails.
+
+```javascript resumen.js:113-126
+function mostrarError() {
+  const contenedor = document.querySelector("main .container");
+
+  const alerta = document.createElement("div");
+  alerta.className = "alert alert-danger alert-dismissible fade show";
+  alerta.innerHTML = `
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>Error:</strong> No se pudo cargar el resumen del inventario.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+
+  contenedor.insertBefore(alerta, contenedor.firstChild);
+}
+```
+
+Displays a dismissible Bootstrap alert with:
+- Danger styling (red)
+- Exclamation triangle icon
+- Close button
+- Positioned at the top of the main container
+
+## Auto-Refresh
+
+### Initialization & Polling
+
+```javascript resumen.js:128-131
+obtenerResumen();
+
+// Se actualizan las estadisticas cada 30 segundos
+setInterval(obtenerResumen, 30000);
+```
+
+The module:
+1. **Loads immediately** on page load
+2. **Auto-refreshes** every 30 seconds (30000ms)
+
+<Note>
+  The dashboard updates automatically without user interaction, ensuring real-time visibility of inventory changes.
+</Note>
+
+## DOM Element IDs
+
+The module expects these DOM elements to exist:
+
+### Main Statistics
+- `#resTotalProductos`: Total products count
+- `#resTotalCategorias`: Total categories count
+- `#resInventario`: Total inventory value
+- `#resPromedio`: Average product price
+
+### Category Inventory
+- `#resInventarioActivo`: Active categories inventory value
+- `#resInventarioInactivo`: Inactive categories inventory value
+
+### Product Extremes
+- `#resMasCaroNombre`: Most expensive product name
+- `#resMasCaroPrecio`: Most expensive product price
+- `#resMasBaratoNombre`: Cheapest product name
+- `#resMasBaratoPrecio`: Cheapest product price
+
+### Distribution Container
+- `#resPorCategoria`: Container for category distribution cards
+
+## Usage Example
+
+```html
+<!-- Main Statistics -->
+<div id="resTotalProductos">0</div>
+<div id="resTotalCategorias">0</div>
+<div id="resInventario">$0</div>
+<div id="resPromedio">$0</div>
+
+<!-- Category Breakdown -->
+<div id="resInventarioActivo">$0</div>
+<div id="resInventarioInactivo">$0</div>
+
+<!-- Product Extremes -->
+<div id="resMasCaroNombre">-</div>
+<div id="resMasCaroPrecio">$0</div>
+<div id="resMasBaratoNombre">-</div>
+<div id="resMasBaratoPrecio">$0</div>
+
+<!-- Distribution -->
+<div id="resPorCategoria" class="row"></div>
+```
+
+## API Integration
+
+**Endpoint:** `GET http://localhost:8080/api/producto/resumen`
+
+**Response Format:**
+```json
+{
+  "totalProductos": 150,
+  "totalCategorias": 8,
+  "valorInventario": 5000000,
+  "precioPromedio": 33333,
+  "valorInventarioCategoriasActivas": 4500000,
+  "valorInventarioCategoriasInactivas": 500000,
+  "productoMasCaro": {
+    "nombre": "Producto Premium",
+    "precio": 250000
+  },
+  "productoMasBarato": {
+    "nombre": "Producto Económico",
+    "precio": 5000
+  },
+  "productosPorCategoria": [
+    {
+      "categoria": "Electrónica",
+      "cantidad": 45
+    },
+    {
+      "categoria": "Hogar",
+      "cantidad": 30
+    }
+  ]
+}
+```

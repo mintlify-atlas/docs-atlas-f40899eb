@@ -1,0 +1,506 @@
+---
+title: 'categorias.js'
+description: 'Category management module for listing, creating, updating, and deleting categories'
+icon: 'folder-tree'
+---
+
+## Overview
+
+The `categorias.js` module manages all category-related operations including fetching, rendering, filtering, pagination, sorting, and CRUD operations. It provides complete category lifecycle management with active/inactive status support.
+
+## Global Variables
+
+<ParamField path="tblCategorias" type="HTMLElement">
+  Reference to the categories table DOM element (`#tablaCategorias`)
+</ParamField>
+
+<ParamField path="categoriasGlobales" type="Array<Object>" default="[]">
+  Global array storing the current list of categories from the API
+</ParamField>
+
+<ParamField path="paginaActual" type="number" default="0">
+  Current page number (zero-indexed)
+</ParamField>
+
+<ParamField path="totalPaginas" type="number" default="0">
+  Total number of pages available
+</ParamField>
+
+<ParamField path="sortHelper" type="SortHelper">
+  Instance of SortHelper class initialized with "codigo" as default sort field
+</ParamField>
+
+## Core Functions
+
+### obtenerCategorias()
+
+Fetches categories from the API with pagination, sorting, and filtering support.
+
+<ParamField path="pagina" type="number" default="0">
+  Page number to fetch (zero-indexed)
+</ParamField>
+
+```javascript categorias.js:7-43
+function obtenerCategorias(pagina = 0) {
+  let url = `http://localhost:8080/api/categoria/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+
+  // Se obtienen los valores de los filtros
+  const codigo = document.getElementById("filtroCodigo")?.value.trim();
+  const nombre = document.getElementById("filtroNombre")?.value.trim();
+  const activo = document.getElementById("filtroActivo")?.value;
+
+  // Se agregan los filtros a la URL si tienen valor
+  if (codigo) {
+    url += `&codigo=${encodeURIComponent(codigo)}`;
+  }
+  if (nombre) {
+    url += `&nombre=${encodeURIComponent(nombre)}`;
+  }
+  if (activo !== "") {
+    url += `&activo=${activo}`;
+  }
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      const lista = Array.isArray(data) ? data : data.content || [];
+      categoriasGlobales = lista;
+
+      if (!Array.isArray(data)) {
+        paginaActual = data.number || 0;
+        totalPaginas = data.totalPages || 1;
+      }
+
+      renderizarCategorias(categoriasGlobales);
+      actualizarControlesPaginacion();
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+**Filters supported:**
+- `codigo`: Category code (text search)
+- `nombre`: Category name (text search)
+- `activo`: Active status (boolean: true/false)
+
+### renderizarCategorias()
+
+Renders the categories table with action buttons.
+
+<ParamField path="categorias" type="Array<Object>" required>
+  Array of category objects to render
+</ParamField>
+
+```javascript categorias.js:45-67
+function renderizarCategorias(categorias) {
+  if (!tblCategorias) return;
+
+  tblCategorias.innerHTML = categorias
+    .map(
+      (categoria) =>
+        `<tr>
+          <td>${categoria.codigo || ""}</td>
+          <td>${categoria.nombre || ""}</td>
+          <td>${categoria.descripcion || ""}</td>
+          <td>${categoria.activo ? "Sí" : "No"}</td>
+          <td style="text-align: center;">
+            <button class="edit-button" onclick="editarCategoria('${
+              categoria.id
+            }')" title="Editar"><i class="bi bi-pencil-square"></i></button>
+            <button class="delete-button" onclick="eliminarCategoria('${
+              categoria.id
+            }')" title="Eliminar"><i class="bi bi-trash-fill"></i></button>
+          </td>
+        </tr>`
+    )
+    .join("");
+}
+```
+
+**Category Object Structure:**
+- `id`: Category ID
+- `codigo`: Category code
+- `nombre`: Category name
+- `descripcion`: Description
+- `activo`: Active status (boolean)
+
+## Pagination Functions
+
+<Tabs>
+  <Tab title="actualizarControlesPaginacion()">
+    Updates pagination controls (buttons and page info).
+
+    ```javascript categorias.js:69-81
+    function actualizarControlesPaginacion() {
+      const paginacionDiv = document.getElementById("paginacion");
+      if (!paginacionDiv) return;
+
+      const btnAnterior = document.getElementById("btnAnterior");
+      const btnSiguiente = document.getElementById("btnSiguiente");
+      const infoPagina = document.getElementById("infoPagina");
+
+      if (btnAnterior) btnAnterior.disabled = paginaActual === 0;
+      if (btnSiguiente) btnSiguiente.disabled = paginaActual >= totalPaginas - 1;
+      if (infoPagina)
+        infoPagina.textContent = `Página ${paginaActual + 1} de ${totalPaginas}`;
+    }
+    ```
+  </Tab>
+
+  <Tab title="irAPagina()">
+    Navigate to a specific page.
+
+    <ParamField path="pagina" type="number" required>
+      Target page number
+    </ParamField>
+
+    ```javascript categorias.js:83-87
+    function irAPagina(pagina) {
+      if (pagina >= 0 && pagina < totalPaginas) {
+        obtenerCategorias(pagina);
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="paginaAnterior()">
+    Navigate to the previous page.
+
+    ```javascript categorias.js:89-93
+    function paginaAnterior() {
+      if (paginaActual > 0) {
+        obtenerCategorias(paginaActual - 1);
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="paginaSiguiente()">
+    Navigate to the next page.
+
+    ```javascript categorias.js:95-99
+    function paginaSiguiente() {
+      if (paginaActual < totalPaginas - 1) {
+        obtenerCategorias(paginaActual + 1);
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Sorting & Filtering
+
+### ordenarPor()
+
+Change sorting order for a specific field.
+
+<ParamField path="campo" type="string" required>
+  Field name to sort by (codigo, nombre, activo)
+</ParamField>
+
+```javascript categorias.js:101-106
+function ordenarPor(campo) {
+  sortHelper.ordenarPor(campo, () => {
+    sortHelper.actualizarIconos(["codigo", "nombre", "activo"]);
+    obtenerCategorias(paginaActual);
+  });
+}
+```
+
+### limpiarFiltros()
+
+Clears all filter inputs and reloads categories from the first page.
+
+```javascript categorias.js:108-114
+function limpiarFiltros() {
+  document.getElementById("filtroCodigo").value = "";
+  document.getElementById("filtroNombre").value = "";
+  document.getElementById("filtroActivo").value = "";
+  obtenerCategorias(0);
+}
+```
+
+### filtrarCategorias()
+
+Client-side filtering across all category fields.
+
+```javascript categorias.js:279-298
+function filtrarCategorias() {
+  const input = document.getElementById("filtroGeneral");
+  if (!input) return;
+
+  const filtroGeneral = input.value.toLowerCase();
+  const filtradas = categoriasGlobales.filter((categoria) => {
+    const codigo = (categoria.codigo || "").toString().toLowerCase();
+    const nombre = (categoria.nombre || "").toString().toLowerCase();
+    const descripcion = (categoria.descripcion || "").toString().toLowerCase();
+    const activo = (categoria.activo ? "si" : "no").toLowerCase();
+    return (
+      codigo.includes(filtroGeneral) ||
+      nombre.includes(filtroGeneral) ||
+      descripcion.includes(filtroGeneral) ||
+      activo.includes(filtroGeneral)
+    );
+  });
+
+  renderizarCategorias(filtradas);
+}
+```
+
+<Note>
+  This function performs client-side filtering on already-loaded categories, unlike `obtenerCategorias()` which filters on the server.
+</Note>
+
+## CRUD Operations
+
+<Tabs>
+  <Tab title="registrarCategoria()">
+    Creates a new category.
+
+    <ParamField path="event" type="Event" required>
+      Form submit event
+    </ParamField>
+
+    ```javascript categorias.js:118-170
+    async function registrarCategoria(event) {
+      event.preventDefault();
+      const categoria = {
+        codigo: document.getElementById("code").value,
+        nombre: document.getElementById("name").value,
+        descripcion: document.getElementById("description").value,
+        activo: document.getElementById("active").value === "1",
+      };
+
+      try {
+        const response = await fetch(
+          "http://localhost:8080/api/categoria/registrar",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(categoria),
+          }
+        );
+        if (!response.ok) {
+          try {
+            const errorData = await response.json();
+
+            if (errorData.errores) {
+              const errores = errorData.errores;
+              let mensajes = [];
+
+              if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+              if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+              if (errores.descripcion)
+                mensajes.push(`Descripción: ${errores.descripcion}`);
+
+              if (mensajes.length > 0) {
+                alert(`${mensajes.join("\n")}`);
+              } else {
+                alert(errorData.error || "No se logró crear la categoría");
+              }
+            } else {
+              alert(errorData.error || "No se logró crear la categoría");
+            }
+          } catch (e) {
+            alert("No se logró crear la categoría");
+          }
+          return;
+        }
+        alert("Categoria registrada exitosamente");
+        location.href = "categorias.html";
+      } catch (error) {
+        return console.error("Error:", error);
+      }
+    }
+    ```
+
+    **Category Object Structure:**
+    - `codigo`: Category code (string)
+    - `nombre`: Category name (string)
+    - `descripcion`: Description (string)
+    - `activo`: Active status (boolean)
+  </Tab>
+
+  <Tab title="editarCategoria()">
+    Navigates to edit page and stores category data in sessionStorage.
+
+    <ParamField path="id" type="string" required>
+      Category ID to edit
+    </ParamField>
+
+    ```javascript categorias.js:172-182
+    function editarCategoria(id) {
+      const categoria = categoriasGlobales.find((c) => c.id == id);
+
+      if (categoria) {
+        sessionStorage.setItem("categoriaEditar", JSON.stringify(categoria));
+      }
+
+      window.location.href = `editarCategoria.html?id=${id}`;
+    }
+    ```
+  </Tab>
+
+  <Tab title="cargarDatosCategoria()">
+    Loads category data from sessionStorage into the edit form.
+
+    ```javascript categorias.js:262-277
+    function cargarDatosCategoria() {
+      const categoriaStr = sessionStorage.getItem("categoriaEditar");
+
+      if (categoriaStr) {
+        const categoria = JSON.parse(categoriaStr);
+
+        document.getElementById("code").value = categoria.codigo || "";
+        document.getElementById("name").value = categoria.nombre || "";
+        document.getElementById("description").value = categoria.descripcion || "";
+        document.getElementById("active").value = categoria.activo ? "1" : "0";
+
+        sessionStorage.removeItem("categoriaEditar");
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="actualizarCategoria()">
+    Updates an existing category.
+
+    <ParamField path="event" type="Event" required>
+      Form submit event
+    </ParamField>
+
+    ```javascript categorias.js:210-260
+    function actualizarCategoria(event) {
+      event.preventDefault();
+      const id = new URLSearchParams(window.location.search).get("id");
+
+      const categoria = {
+        codigo: document.getElementById("code").value,
+        nombre: document.getElementById("name").value,
+        descripcion: document.getElementById("description").value,
+        activo: document.getElementById("active").value === "1",
+      };
+
+      fetch(`http://localhost:8080/api/categoria/actualizar/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(categoria),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            try {
+              const errorData = await response.json();
+
+              if (errorData.errores) {
+                const errores = errorData.errores;
+                let mensajes = [];
+
+                if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+                if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+                if (errores.descripcion)
+                  mensajes.push(`Descripción: ${errores.descripcion}`);
+
+                if (mensajes.length > 0) {
+                  alert(`${mensajes.join("\n")}`);
+                } else {
+                  alert(errorData.error || "No se logró crear la categoría");
+                }
+              } else {
+                alert(errorData.error || "No se logró crear la categoría");
+              }
+            } catch (e) {
+              alert("No se logró crear la categoría");
+            }
+            return;
+          }
+          alert("Categoria actualizada exitosamente");
+          location.href = "categorias.html";
+        })
+        .catch((error) => console.error("Error:", error));
+    }
+    ```
+  </Tab>
+
+  <Tab title="eliminarCategoria()">
+    Deletes a category after confirmation.
+
+    <ParamField path="id" type="string" required>
+      Category ID to delete
+    </ParamField>
+
+    ```javascript categorias.js:184-208
+    function eliminarCategoria(id) {
+      if (!confirm("¿Está seguro de eliminar la categoría?")) return;
+
+      fetch(`http://localhost:8080/api/categoria/${id}`, {
+        method: "DELETE",
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            try {
+              const errorData = await response.json();
+              const mensajeError =
+                errorData.error || "Error al eliminar la categoría";
+              alert(mensajeError);
+            } catch (e) {
+              alert("Error al eliminar la categoría");
+            }
+            return;
+          }
+          alert("Categoría eliminada");
+          obtenerCategorias();
+        })
+        .catch(() => {
+          alert("Error de conexión al intentar eliminar la categoría");
+        });
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Initialization
+
+```javascript categorias.js:116
+obtenerCategorias();
+```
+
+The module automatically fetches and displays the first page of categories on load.
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/categoria/listar` | GET | List categories with pagination, sorting, and filters |
+| `/api/categoria/registrar` | POST | Create new category |
+| `/api/categoria/actualizar/{id}` | PUT | Update existing category |
+| `/api/categoria/{id}` | DELETE | Delete category |
+
+## State Management
+
+<Note>
+  Category data is stored in `categoriasGlobales` array and persisted in `sessionStorage` when navigating to edit pages.
+</Note>
+
+**SessionStorage Keys:**
+- `categoriaEditar`: Stores category object when navigating to edit page
+
+## Active/Inactive Status
+
+Categories have an `activo` boolean field:
+- **Active (true)**: Category is available for use with products
+- **Inactive (false)**: Category is disabled but not deleted
+
+The active status is displayed as "Sí" (Yes) or "No" in the table.
+
+## Error Handling
+
+The module handles validation errors from the API with field-specific messages:
+- `codigo`: Code validation errors
+- `nombre`: Name validation errors
+- `descripcion`: Description validation errors
+
+Generic error messages are shown when specific field errors are not available.

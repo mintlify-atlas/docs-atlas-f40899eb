@@ -1,0 +1,443 @@
+---
+title: 'Products API'
+description: 'API endpoints for managing products in the Inmobiliaria Web system'
+---
+
+## List Products
+
+<CodeGroup>
+```http GET /api/producto/listar
+GET /api/producto/listar?page=0&size=20
+```
+</CodeGroup>
+
+Retrieve a paginated list of products with optional filtering and sorting.
+
+### Query Parameters
+
+<ParamField query="page" type="number" default="0">
+  Page number (0-indexed)
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of items per page
+</ParamField>
+
+<ParamField query="sortBy" type="string">
+  Field to sort by (codigo, nombre, marca, categoria, precio)
+</ParamField>
+
+<ParamField query="sortDir" type="string">
+  Sort direction: `asc` or `desc`
+</ParamField>
+
+<ParamField query="nombre" type="string">
+  Filter by product name (partial match)
+</ParamField>
+
+<ParamField query="marca" type="string">
+  Filter by brand name (partial match)
+</ParamField>
+
+<ParamField query="categoria" type="number">
+  Filter by category ID
+</ParamField>
+
+<ParamField query="precioMin" type="number">
+  Filter by minimum price
+</ParamField>
+
+<ParamField query="precioMax" type="number">
+  Filter by maximum price
+</ParamField>
+
+### Response
+
+<ResponseField name="content" type="array">
+  Array of product objects
+  <Expandable title="Product Object">
+    <ResponseField name="id" type="number">
+      Product ID
+    </ResponseField>
+    <ResponseField name="codigo" type="string">
+      Product code
+    </ResponseField>
+    <ResponseField name="nombre" type="string">
+      Product name
+    </ResponseField>
+    <ResponseField name="descripcion" type="string">
+      Product description
+    </ResponseField>
+    <ResponseField name="marca" type="string">
+      Product brand
+    </ResponseField>
+    <ResponseField name="precio" type="number">
+      Product price
+    </ResponseField>
+    <ResponseField name="categoria" type="object">
+      Category object with id and nombre properties
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="number" type="number">
+  Current page number
+</ResponseField>
+
+<ResponseField name="totalPages" type="number">
+  Total number of pages
+</ResponseField>
+
+### Example Request
+
+```javascript
+fetch('http://localhost:8080/api/producto/listar?page=0&size=20&nombre=casa&precioMin=100000&precioMax=500000')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+### Example Response
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "codigo": "P001",
+      "nombre": "Casa en el centro",
+      "descripcion": "Casa amplia con 3 habitaciones",
+      "marca": "Inmobiliaria ABC",
+      "precio": 250000000,
+      "categoria": {
+        "id": 1,
+        "nombre": "Casas"
+      }
+    }
+  ],
+  "number": 0,
+  "totalPages": 5
+}
+```
+
+---
+
+## Register Product
+
+<CodeGroup>
+```http POST /api/producto/registrar
+POST /api/producto/registrar
+Content-Type: application/json
+```
+</CodeGroup>
+
+Create a new product.
+
+### Request Body
+
+<ParamField body="codigo" type="string" required>
+  Product code (unique identifier)
+</ParamField>
+
+<ParamField body="nombre" type="string" required>
+  Product name
+</ParamField>
+
+<ParamField body="descripcion" type="string" required>
+  Product description
+</ParamField>
+
+<ParamField body="marca" type="string" required>
+  Product brand
+</ParamField>
+
+<ParamField body="precio" type="number" required>
+  Product price (must be positive)
+</ParamField>
+
+<ParamField body="categoria" type="number" required>
+  Category ID
+</ParamField>
+
+### Example Request
+
+```javascript
+const producto = {
+  codigo: "P001",
+  nombre: "Casa en el centro",
+  descripcion: "Casa amplia con 3 habitaciones",
+  marca: "Inmobiliaria ABC",
+  precio: 250000000,
+  categoria: 1
+};
+
+fetch('http://localhost:8080/api/producto/registrar', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(producto)
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+### Success Response
+
+Returns the created product object with HTTP status 200/201.
+
+### Error Response
+
+```json
+{
+  "error": "No se logró crear el producto",
+  "errores": {
+    "codigo": "El código ya existe",
+    "nombre": "El nombre es requerido",
+    "precio": "El precio debe ser mayor a 0"
+  }
+}
+```
+
+---
+
+## Update Product
+
+<CodeGroup>
+```http PUT /api/producto/actualizar/{id}
+PUT /api/producto/actualizar/1
+Content-Type: application/json
+```
+</CodeGroup>
+
+Update an existing product.
+
+### Path Parameters
+
+<ParamField path="id" type="number" required>
+  Product ID
+</ParamField>
+
+### Request Body
+
+<ParamField body="codigo" type="string" required>
+  Product code
+</ParamField>
+
+<ParamField body="nombre" type="string" required>
+  Product name
+</ParamField>
+
+<ParamField body="descripcion" type="string" required>
+  Product description
+</ParamField>
+
+<ParamField body="marca" type="string" required>
+  Product brand
+</ParamField>
+
+<ParamField body="precio" type="number" required>
+  Product price
+</ParamField>
+
+<ParamField body="categoria" type="number" required>
+  Category ID
+</ParamField>
+
+### Example Request
+
+```javascript
+const producto = {
+  codigo: "P001",
+  nombre: "Casa en el centro - Actualizada",
+  descripcion: "Casa amplia con 4 habitaciones",
+  marca: "Inmobiliaria ABC",
+  precio: 280000000,
+  categoria: 1
+};
+
+fetch('http://localhost:8080/api/producto/actualizar/1', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(producto)
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+### Success Response
+
+Returns the updated product object with HTTP status 200.
+
+### Error Response
+
+```json
+{
+  "error": "No se logró actualizar el producto",
+  "errores": {
+    "codigo": "El código ya existe",
+    "precio": "El precio debe ser mayor a 0"
+  }
+}
+```
+
+---
+
+## Delete Product
+
+<CodeGroup>
+```http DELETE /api/producto/{id}
+DELETE /api/producto/1
+```
+</CodeGroup>
+
+Delete a product by ID.
+
+### Path Parameters
+
+<ParamField path="id" type="number" required>
+  Product ID
+</ParamField>
+
+### Example Request
+
+```javascript
+fetch('http://localhost:8080/api/producto/1', {
+  method: 'DELETE'
+})
+  .then(response => {
+    if (response.ok) {
+      console.log('Producto eliminado exitosamente');
+    }
+  });
+```
+
+### Success Response
+
+Returns HTTP status 200 or 204 on successful deletion.
+
+### Error Response
+
+```json
+{
+  "error": "No se logro eliminar el producto."
+}
+```
+
+---
+
+## Get Summary
+
+<CodeGroup>
+```http GET /api/producto/resumen
+GET /api/producto/resumen
+```
+</CodeGroup>
+
+Get a summary of product statistics and inventory information.
+
+### Response
+
+<ResponseField name="totalProductos" type="number">
+  Total number of products
+</ResponseField>
+
+<ResponseField name="totalCategorias" type="number">
+  Total number of categories
+</ResponseField>
+
+<ResponseField name="valorInventario" type="number">
+  Total inventory value (sum of all product prices)
+</ResponseField>
+
+<ResponseField name="precioPromedio" type="number">
+  Average product price
+</ResponseField>
+
+<ResponseField name="valorInventarioCategoriasActivas" type="number">
+  Inventory value for active categories
+</ResponseField>
+
+<ResponseField name="valorInventarioCategoriasInactivas" type="number">
+  Inventory value for inactive categories
+</ResponseField>
+
+<ResponseField name="productoMasCaro" type="object">
+  Most expensive product
+  <Expandable title="Product Details">
+    <ResponseField name="nombre" type="string">
+      Product name
+    </ResponseField>
+    <ResponseField name="precio" type="number">
+      Product price
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="productoMasBarato" type="object">
+  Least expensive product
+  <Expandable title="Product Details">
+    <ResponseField name="nombre" type="string">
+      Product name
+    </ResponseField>
+    <ResponseField name="precio" type="number">
+      Product price
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="productosPorCategoria" type="array">
+  Products grouped by category
+  <Expandable title="Category Stats">
+    <ResponseField name="categoria" type="string">
+      Category name
+    </ResponseField>
+    <ResponseField name="cantidad" type="number">
+      Number of products in category
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+```javascript
+fetch('http://localhost:8080/api/producto/resumen')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+### Example Response
+
+```json
+{
+  "totalProductos": 150,
+  "totalCategorias": 8,
+  "valorInventario": 45000000000,
+  "precioPromedio": 300000000,
+  "valorInventarioCategoriasActivas": 42000000000,
+  "valorInventarioCategoriasInactivas": 3000000000,
+  "productoMasCaro": {
+    "nombre": "Edificio Comercial Centro",
+    "precio": 1500000000
+  },
+  "productoMasBarato": {
+    "nombre": "Lote Urbano",
+    "precio": 50000000
+  },
+  "productosPorCategoria": [
+    {
+      "categoria": "Casas",
+      "cantidad": 45
+    },
+    {
+      "categoria": "Apartamentos",
+      "cantidad": 62
+    },
+    {
+      "categoria": "Lotes",
+      "cantidad": 23
+    }
+  ]
+}
+```

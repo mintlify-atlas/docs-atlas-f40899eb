@@ -1,0 +1,1137 @@
+---
+title: API Integration
+description: Learn how the Inmobiliaria Web frontend communicates with the backend REST API
+icon: 'plug'
+---
+
+## Overview
+
+The Inmobiliaria Web frontend uses the native **Fetch API** to communicate with a RESTful backend. All API calls are asynchronous using Promises or async/await patterns with comprehensive error handling.
+
+## API Architecture
+
+### Base Configuration
+
+```javascript
+Base URL: http://localhost:8080
+Content-Type: application/json
+Methods: GET, POST, PUT, DELETE
+```
+
+### Response Format
+
+All API responses follow a consistent paginated structure:
+
+```json Paginated Response
+{
+  "content": [
+    { /* item 1 */ },
+    { /* item 2 */ }
+  ],
+  "number": 0,           // Current page (0-indexed)
+  "totalPages": 5,       // Total number of pages
+  "totalElements": 100,  // Total items across all pages
+  "size": 20,            // Items per page
+  "first": true,         // Is first page?
+  "last": false          // Is last page?
+}
+```
+
+## Product API Integration
+
+<AccordionGroup>
+<Accordion title="List Products (GET)" icon="list">
+
+### Endpoint
+
+```
+GET /api/producto/listar?page={page}&size={size}&sort={field},{direction}
+```
+
+### Implementation
+
+```javascript JS/productos.js (lines 7-51)
+const tablaProductos = document.getElementById("tablaProductos");
+let productosGlobales = [];
+let paginaActual = 0;
+let totalPaginas = 0;
+const sortHelper = new SortHelper("codigo");
+
+function obtenerProductos(pagina = 0) {
+  let url = `http://localhost:8080/api/producto/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+
+  // Get filter values
+  const nombre = document.getElementById("filtroNombre")?.value.trim();
+  const marca = document.getElementById("filtroMarca")?.value.trim();
+  const categoria = document.getElementById("filtroCategoria")?.value;
+  const precioMin = document.getElementById("filtroPrecioMin")?.value;
+  const precioMax = document.getElementById("filtroPrecioMax")?.value;
+
+  // Add filters to URL if they have values
+  if (nombre) url += `&nombre=${encodeURIComponent(nombre)}`;
+  if (marca) url += `&marca=${encodeURIComponent(marca)}`;
+  if (categoria) url += `&categoria=${encodeURIComponent(categoria)}`;
+  if (precioMin) url += `&precioMin=${encodeURIComponent(precioMin)}`;
+  if (precioMax) url += `&precioMax=${encodeURIComponent(precioMax)}`;
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      // API returns paginated response (object with 'content')
+      const lista = Array.isArray(data) ? data : data.content || [];
+      productosGlobales = lista;
+
+      // Save pagination info
+      if (!Array.isArray(data)) {
+        paginaActual = data.number || 0;
+        totalPaginas = data.totalPages || 1;
+      }
+
+      renderizarProductos(productosGlobales);
+      actualizarControlesPaginacion();
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+### Query Parameters
+
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `page` | integer | No | Page number (0-indexed) | `0` |
+| `size` | integer | No | Items per page | `20` |
+| `sort` | string | No | Sort field and direction | `codigo,asc` |
+| `nombre` | string | No | Filter by product name | `Casa` |
+| `marca` | string | No | Filter by brand | `Inmobiliaria XYZ` |
+| `categoria` | integer | No | Filter by category ID | `1` |
+| `precioMin` | decimal | No | Minimum price filter | `100000` |
+| `precioMax` | decimal | No | Maximum price filter | `500000` |
+
+### Example Requests
+
+<CodeGroup>
+```bash Simple List
+curl "http://localhost:8080/api/producto/listar?page=0&size=20"
+```
+
+```bash With Filters
+curl "http://localhost:8080/api/producto/listar?page=0&size=20&nombre=Casa&precioMin=100000&precioMax=500000"
+```
+
+```bash With Sorting
+curl "http://localhost:8080/api/producto/listar?page=0&size=20&sort=precio,desc"
+```
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "codigo": "PROD-001",
+      "nombre": "Casa en Centro",
+      "descripcion": "Casa amplia en el centro de la ciudad",
+      "marca": "Inmobiliaria Premium",
+      "precio": 250000.00,
+      "categoria": {
+        "id": 1,
+        "nombre": "Casas",
+        "codigo": "CAT-001"
+      }
+    }
+  ],
+  "number": 0,
+  "totalPages": 3,
+  "totalElements": 45,
+  "size": 20
+}
+```
+
+</Accordion>
+
+<Accordion title="Create Product (POST)" icon="plus">
+
+### Endpoint
+
+```
+POST /api/producto/registrar
+```
+
+### Implementation
+
+```javascript JS/productos.js (lines 252-311)
+async function registrarProducto(event) {
+  event.preventDefault();
+
+  const categoriaId = document.getElementById("category").value;
+
+  const producto = {
+    codigo: document.getElementById("code").value,
+    nombre: document.getElementById("name").value,
+    descripcion: document.getElementById("description").value,
+    marca: document.getElementById("brand").value,
+    precio: parseFloat(document.getElementById("price").value),
+    categoria: parseInt(categoriaId),
+  };
+
+  try {
+    const response = await fetch(
+      "http://localhost:8080/api/producto/registrar",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(producto),
+      }
+    );
+    
+    if (!response.ok) {
+      try {
+        const errorData = await response.json();
+
+        // Handle validation errors with specific fields
+        if (errorData.errores) {
+          const errores = errorData.errores;
+          let mensajes = [];
+
+          if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+          if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+          if (errores.marca) mensajes.push(`Marca: ${errores.marca}`);
+          if (errores.descripcion) mensajes.push(`Descripción: ${errores.descripcion}`);
+          if (errores.precio) mensajes.push(`Precio: ${errores.precio}`);
+
+          if (mensajes.length > 0) {
+            alert(`${mensajes.join("\n")}`);
+          } else {
+            alert(errorData.error || "No se logró crear el producto");
+          }
+        } else {
+          alert(errorData.error || "No se logró crear el producto");
+        }
+      } catch (e) {
+        alert("No se logró crear el producto");
+      }
+      return;
+    }
+    
+    alert("Producto registrado exitosamente");
+    location.href = "productos.html";
+  } catch (error) {
+    return console.error("Error:", error);
+  }
+}
+```
+
+### Request Body
+
+```json
+{
+  "codigo": "PROD-001",
+  "nombre": "Casa en Centro",
+  "descripcion": "Casa amplia con 3 habitaciones",
+  "marca": "Inmobiliaria XYZ",
+  "precio": 250000.00,
+  "categoria": 1
+}
+```
+
+### Success Response (201 Created)
+
+```json
+{
+  "id": 1,
+  "codigo": "PROD-001",
+  "nombre": "Casa en Centro",
+  "descripcion": "Casa amplia con 3 habitaciones",
+  "marca": "Inmobiliaria XYZ",
+  "precio": 250000.00,
+  "categoria": {
+    "id": 1,
+    "nombre": "Casas"
+  }
+}
+```
+
+### Error Response (400 Bad Request)
+
+```json
+{
+  "error": "Errores de validación",
+  "errores": {
+    "codigo": "El código es requerido",
+    "nombre": "El nombre es requerido",
+    "precio": "El precio debe ser mayor a 0"
+  }
+}
+```
+
+</Accordion>
+
+<Accordion title="Update Product (PUT)" icon="pen">
+
+### Endpoint
+
+```
+PUT /api/producto/actualizar/{id}
+```
+
+### Implementation
+
+```javascript JS/productos.js (lines 346-406)
+async function actualizarProducto(event) {
+  event.preventDefault();
+
+  const id = new URLSearchParams(window.location.search).get("id");
+  const categoriaId = document.getElementById("category").value;
+
+  const producto = {
+    codigo: document.getElementById("code").value,
+    nombre: document.getElementById("name").value,
+    descripcion: document.getElementById("description").value,
+    marca: document.getElementById("brand").value,
+    precio: parseFloat(document.getElementById("price").value),
+    categoria: parseInt(categoriaId),
+  };
+
+  try {
+    const response = await fetch(
+      `http://localhost:8080/api/producto/actualizar/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(producto),
+      }
+    );
+    
+    if (!response.ok) {
+      try {
+        const errorData = await response.json();
+
+        // Handle validation errors with specific fields
+        if (errorData.errores) {
+          const errores = errorData.errores;
+          let mensajes = [];
+
+          if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+          if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+          if (errores.marca) mensajes.push(`Marca: ${errores.marca}`);
+          if (errores.descripcion) mensajes.push(`Descripción: ${errores.descripcion}`);
+          if (errores.precio) mensajes.push(`Precio: ${errores.precio}`);
+
+          if (mensajes.length > 0) {
+            alert(`${mensajes.join("\n")}`);
+          } else {
+            alert(errorData.error || "No se logró actualizar el producto");
+          }
+        } else {
+          alert(errorData.error || "No se logró actualizar el producto");
+        }
+      } catch (e) {
+        alert("No se logró actualizar el producto");
+      }
+      return;
+    }
+    
+    alert("Producto actualizado exitosamente");
+    location.href = "productos.html";
+  } catch (error) {
+    return console.error("Error:", error);
+  }
+}
+```
+
+### Request Example
+
+```bash
+curl -X PUT "http://localhost:8080/api/producto/actualizar/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "codigo": "PROD-001",
+    "nombre": "Casa en Centro (Actualizada)",
+    "descripcion": "Casa renovada con 3 habitaciones",
+    "marca": "Inmobiliaria Premium",
+    "precio": 275000.00,
+    "categoria": 1
+  }'
+```
+
+</Accordion>
+
+<Accordion title="Delete Product (DELETE)" icon="trash">
+
+### Endpoint
+
+```
+DELETE /api/producto/{id}
+```
+
+### Implementation
+
+```javascript JS/productos.js (lines 170-194)
+function eliminarProducto(id) {
+  if (!confirm("¿Está seguro de eliminar el producto?")) return;
+
+  fetch(`http://localhost:8080/api/producto/${id}`, {
+    method: "DELETE",
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          const mensajeError = errorData.error || "No se logro eliminar el producto.";
+          alert(mensajeError);
+        } catch (e) {
+          alert("No se logro eliminar el producto.");
+        }
+        return;
+      }
+      alert("Producto eliminado exitosamente.");
+      obtenerProductos();
+    })
+    .catch(() => {
+      alert("Error de conexión al intentar eliminar el producto");
+    });
+}
+```
+
+### Request Example
+
+```bash
+curl -X DELETE "http://localhost:8080/api/producto/1"
+```
+
+### Success Response (200 OK)
+
+```json
+{
+  "message": "Producto eliminado exitosamente"
+}
+```
+
+### Error Response (400 Bad Request)
+
+```json
+{
+  "error": "No se puede eliminar el producto porque tiene dependencias"
+}
+```
+
+</Accordion>
+</AccordionGroup>
+
+## Category API Integration
+
+<AccordionGroup>
+<Accordion title="List Categories (GET)" icon="list">
+
+### Endpoint
+
+```
+GET /api/categoria/listar?page={page}&size={size}&sort={field},{direction}
+```
+
+### Implementation
+
+```javascript JS/categorias.js (lines 7-43)
+function obtenerCategorias(pagina = 0) {
+  let url = `http://localhost:8080/api/categoria/listar?page=${pagina}&size=20&${sortHelper.getParams()}`;
+
+  // Get filter values
+  const codigo = document.getElementById("filtroCodigo")?.value.trim();
+  const nombre = document.getElementById("filtroNombre")?.value.trim();
+  const activo = document.getElementById("filtroActivo")?.value;
+
+  // Add filters to URL if they have values
+  if (codigo) url += `&codigo=${encodeURIComponent(codigo)}`;
+  if (nombre) url += `&nombre=${encodeURIComponent(nombre)}`;
+  if (activo !== "") url += `&activo=${activo}`;
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      const lista = Array.isArray(data) ? data : data.content || [];
+      categoriasGlobales = lista;
+
+      if (!Array.isArray(data)) {
+        paginaActual = data.number || 0;
+        totalPaginas = data.totalPages || 1;
+      }
+
+      renderizarCategorias(categoriasGlobales);
+      actualizarControlesPaginacion();
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `page` | integer | No | Page number (0-indexed) |
+| `size` | integer | No | Items per page |
+| `sort` | string | No | Sort field and direction |
+| `codigo` | string | No | Filter by category code |
+| `nombre` | string | No | Filter by category name |
+| `activo` | boolean | No | Filter by active status |
+
+</Accordion>
+
+<Accordion title="List Category Names (GET)" icon="tag">
+
+### Endpoint
+
+```
+GET /api/categoria/listar-nombre
+```
+
+### Implementation
+
+```javascript JS/productos.js (lines 135-159)
+async function cargarCategoriasEnFiltro() {
+  try {
+    const response = await fetch(
+      "http://localhost:8080/api/categoria/listar-nombre"
+    );
+    if (!response.ok) throw new Error("Error al cargar categorías");
+
+    const data = await response.json();
+    const categorias = Array.isArray(data) ? data : data.content || [];
+
+    const selectCategoria = document.getElementById("filtroCategoria");
+    if (!selectCategoria) return;
+
+    selectCategoria.innerHTML = '<option value="">Todas</option>';
+
+    categorias.forEach((categoria) => {
+      const option = document.createElement("option");
+      option.value = categoria.id;
+      option.textContent = categoria.nombre;
+      selectCategoria.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Error al cargar categorías:", error);
+  }
+}
+```
+
+### Response Example
+
+```json
+[
+  { "id": 1, "nombre": "Casas" },
+  { "id": 2, "nombre": "Apartamentos" },
+  { "id": 3, "nombre": "Locales Comerciales" }
+]
+```
+
+<Note>
+  This endpoint returns a simplified list without pagination, ideal for populating dropdown menus.
+</Note>
+
+</Accordion>
+
+<Accordion title="Create Category (POST)" icon="plus">
+
+### Endpoint
+
+```
+POST /api/categoria/registrar
+```
+
+### Implementation
+
+```javascript JS/categorias.js (lines 118-170)
+async function registrarCategoria(event) {
+  event.preventDefault();
+  
+  const categoria = {
+    codigo: document.getElementById("code").value,
+    nombre: document.getElementById("name").value,
+    descripcion: document.getElementById("description").value,
+    activo: document.getElementById("active").value === "1",
+  };
+
+  try {
+    const response = await fetch(
+      "http://localhost:8080/api/categoria/registrar",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(categoria),
+      }
+    );
+    
+    if (!response.ok) {
+      try {
+        const errorData = await response.json();
+        if (errorData.errores) {
+          const errores = errorData.errores;
+          let mensajes = [];
+          if (errores.codigo) mensajes.push(`Código: ${errores.codigo}`);
+          if (errores.nombre) mensajes.push(`Nombre: ${errores.nombre}`);
+          if (errores.descripcion) mensajes.push(`Descripción: ${errores.descripcion}`);
+          if (mensajes.length > 0) {
+            alert(`${mensajes.join("\n")}`);
+          } else {
+            alert(errorData.error || "No se logró crear la categoría");
+          }
+        } else {
+          alert(errorData.error || "No se logró crear la categoría");
+        }
+      } catch (e) {
+        alert("No se logró crear la categoría");
+      }
+      return;
+    }
+    
+    alert("Categoria registrada exitosamente");
+    location.href = "categorias.html";
+  } catch (error) {
+    return console.error("Error:", error);
+  }
+}
+```
+
+### Request Body
+
+```json
+{
+  "codigo": "CAT-001",
+  "nombre": "Casas",
+  "descripcion": "Propiedades residenciales tipo casa",
+  "activo": true
+}
+```
+
+</Accordion>
+
+<Accordion title="Update Category (PUT)" icon="pen">
+
+### Endpoint
+
+```
+PUT /api/categoria/actualizar/{id}
+```
+
+### Implementation
+
+```javascript JS/categorias.js (lines 210-260)
+function actualizarCategoria(event) {
+  event.preventDefault();
+  const id = new URLSearchParams(window.location.search).get("id");
+
+  const categoria = {
+    codigo: document.getElementById("code").value,
+    nombre: document.getElementById("name").value,
+    descripcion: document.getElementById("description").value,
+    activo: document.getElementById("active").value === "1",
+  };
+
+  fetch(`http://localhost:8080/api/categoria/actualizar/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(categoria),
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        // Error handling similar to registrarCategoria
+        // ...
+        return;
+      }
+      alert("Categoria actualizada exitosamente");
+      location.href = "categorias.html";
+    })
+    .catch((error) => console.error("Error:", error));
+}
+```
+
+</Accordion>
+
+<Accordion title="Delete Category (DELETE)" icon="trash">
+
+### Endpoint
+
+```
+DELETE /api/categoria/{id}
+```
+
+### Implementation
+
+```javascript JS/categorias.js (lines 184-208)
+function eliminarCategoria(id) {
+  if (!confirm("¿Está seguro de eliminar la categoría?")) return;
+
+  fetch(`http://localhost:8080/api/categoria/${id}`, {
+    method: "DELETE",
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          const mensajeError = errorData.error || "Error al eliminar la categoría";
+          alert(mensajeError);
+        } catch (e) {
+          alert("Error al eliminar la categoría");
+        }
+        return;
+      }
+      alert("Categoría eliminada");
+      obtenerCategorias();
+    })
+    .catch(() => {
+      alert("Error de conexión al intentar eliminar la categoría");
+    });
+}
+```
+
+</Accordion>
+</AccordionGroup>
+
+## Dashboard Summary API
+
+<Accordion title="Get Summary Statistics (GET)" icon="chart-line">
+
+### Endpoint
+
+```
+GET /api/producto/resumen
+```
+
+### Implementation
+
+```javascript JS/resumen.js (lines 12-26)
+async function obtenerResumen() {
+  try {
+    const response = await fetch("http://localhost:8080/api/producto/resumen");
+
+    if (!response.ok) {
+      throw new Error("Error al obtener el resumen");
+    }
+
+    const data = await response.json();
+    renderizarResumen(data);
+  } catch (error) {
+    console.error("Error al cargar el resumen:", error);
+    mostrarError();
+  }
+}
+
+// Auto-refresh every 30 seconds
+setInterval(obtenerResumen, 30000);
+```
+
+### Response Example
+
+```json
+{
+  "totalProductos": 45,
+  "totalCategorias": 8,
+  "valorInventario": 12500000.00,
+  "precioPromedio": 277777.78,
+  "valorInventarioCategoriasActivas": 11000000.00,
+  "valorInventarioCategoriasInactivas": 1500000.00,
+  "productoMasCaro": {
+    "id": 15,
+    "nombre": "Casa Lujosa en Zona Norte",
+    "precio": 850000.00
+  },
+  "productoMasBarato": {
+    "id": 3,
+    "nombre": "Habitación Compartida",
+    "precio": 50000.00
+  },
+  "productosPorCategoria": [
+    { "categoria": "Casas", "cantidad": 15 },
+    { "categoria": "Apartamentos", "cantidad": 20 },
+    { "categoria": "Locales", "cantidad": 10 }
+  ]
+}
+```
+
+### Data Rendering
+
+```javascript JS/resumen.js (lines 29-69)
+function renderizarResumen(data) {
+  // Main statistics
+  document.getElementById("resTotalProductos").textContent = data.totalProductos || 0;
+  document.getElementById("resTotalCategorias").textContent = data.totalCategorias || 0;
+  document.getElementById("resInventario").textContent = formatearMoneda(data.valorInventario || 0);
+  document.getElementById("resPromedio").textContent = formatearMoneda(data.precioPromedio || 0);
+
+  // Inventory by categories
+  document.getElementById("resInventarioActivo").textContent = formatearMoneda(
+    data.valorInventarioCategoriasActivas || 0
+  );
+  document.getElementById("resInventarioInactivo").textContent = formatearMoneda(
+    data.valorInventarioCategoriasInactivas || 0
+  );
+
+  // Most expensive product
+  if (data.productoMasCaro) {
+    document.getElementById("resMasCaroNombre").textContent = data.productoMasCaro.nombre;
+    document.getElementById("resMasCaroPrecio").textContent = formatearMoneda(data.productoMasCaro.precio);
+  }
+
+  // Cheapest product
+  if (data.productoMasBarato) {
+    document.getElementById("resMasBaratoNombre").textContent = data.productoMasBarato.nombre;
+    document.getElementById("resMasBaratoPrecio").textContent = formatearMoneda(data.productoMasBarato.precio);
+  }
+
+  // Products by category
+  renderizarProductosPorCategoria(data.productosPorCategoria || []);
+}
+```
+
+</Accordion>
+
+## Error Handling Patterns
+
+### Comprehensive Error Handling
+
+All API calls follow this pattern:
+
+```javascript
+async function apiCall() {
+  try {
+    const response = await fetch(url, options);
+    
+    if (!response.ok) {
+      try {
+        const errorData = await response.json();
+        
+        // Handle field-level validation errors
+        if (errorData.errores) {
+          const errores = errorData.errores;
+          let mensajes = [];
+          
+          // Collect all field errors
+          Object.keys(errores).forEach(field => {
+            mensajes.push(`${field}: ${errores[field]}`);
+          });
+          
+          alert(mensajes.join("\n"));
+        } else {
+          // Handle generic error message
+          alert(errorData.error || "Error en la operación");
+        }
+      } catch (e) {
+        // If error response is not JSON
+        alert("Error en la operación");
+      }
+      return;
+    }
+    
+    // Success handling
+    const data = await response.json();
+    // Process data...
+    
+  } catch (error) {
+    // Network or other errors
+    console.error("Error:", error);
+    alert("Error de conexión");
+  }
+}
+```
+
+### Error Response Format
+
+<CodeGroup>
+```json Validation Errors (400)
+{
+  "error": "Errores de validación",
+  "errores": {
+    "codigo": "El código es requerido",
+    "nombre": "El nombre debe tener entre 3 y 100 caracteres",
+    "precio": "El precio debe ser mayor a 0"
+  }
+}
+```
+
+```json Generic Error (400/404/500)
+{
+  "error": "No se encontró el producto con ID 123"
+}
+```
+
+```json Constraint Error (400)
+{
+  "error": "No se puede eliminar la categoría porque tiene productos asociados"
+}
+```
+</CodeGroup>
+
+## Data Flow Patterns
+
+### Loading and Rendering Pattern
+
+<Steps>
+  <Step title="Initialize">
+    Declare global state variables:
+    ```javascript
+    let productosGlobales = [];
+    let paginaActual = 0;
+    let totalPaginas = 0;
+    ```
+  </Step>
+  
+  <Step title="Fetch Data">
+    Make API call with parameters:
+    ```javascript
+    fetch(url)
+      .then(response => response.json())
+      .then(data => { /* process */ })
+    ```
+  </Step>
+  
+  <Step title="Store Data">
+    Save to global state:
+    ```javascript
+    productosGlobales = data.content || [];
+    paginaActual = data.number || 0;
+    totalPaginas = data.totalPages || 1;
+    ```
+  </Step>
+  
+  <Step title="Render UI">
+    Update DOM with data:
+    ```javascript
+    renderizarProductos(productosGlobales);
+    actualizarControlesPaginacion();
+    ```
+  </Step>
+</Steps>
+
+### Edit Flow with SessionStorage
+
+<Steps>
+  <Step title="User Clicks Edit">
+    ```javascript
+    function editarProducto(id) {
+      const producto = productosGlobales.find(p => p.id == id);
+      if (producto) {
+        sessionStorage.setItem("productoEditar", JSON.stringify(producto));
+      }
+      window.location.href = `editarProducto.html?id=${id}`;
+    }
+    ```
+  </Step>
+  
+  <Step title="Edit Page Loads Data">
+    ```javascript
+    function cargarDatosProducto() {
+      const productoStr = sessionStorage.getItem("productoEditar");
+      if (productoStr) {
+        const producto = JSON.parse(productoStr);
+        // Populate form fields
+        document.getElementById("code").value = producto.codigo || "";
+        document.getElementById("name").value = producto.nombre || "";
+        // ...
+        sessionStorage.removeItem("productoEditar");
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="User Submits Changes">
+    ```javascript
+    async function actualizarProducto(event) {
+      const id = new URLSearchParams(window.location.search).get("id");
+      const response = await fetch(
+        `http://localhost:8080/api/producto/actualizar/${id}`,
+        { method: "PUT", /* ... */ }
+      );
+    }
+    ```
+  </Step>
+</Steps>
+
+## Utility Functions
+
+### Currency Formatting
+
+```javascript JS/resumen.js (lines 1-9)
+function formatearMoneda(valor) {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(valor);
+}
+```
+
+Formats numbers as Colombian Peso (COP) currency:
+- Input: `250000`
+- Output: `$250.000`
+
+### URL Parameter Encoding
+
+```javascript
+if (nombre) {
+  url += `&nombre=${encodeURIComponent(nombre)}`;
+}
+```
+
+Ensures special characters in filters are properly encoded for URLs.
+
+## API Testing with cURL
+
+<CodeGroup>
+```bash List Products
+curl "http://localhost:8080/api/producto/listar?page=0&size=20"
+```
+
+```bash Create Product
+curl -X POST "http://localhost:8080/api/producto/registrar" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "codigo": "PROD-001",
+    "nombre": "Casa en Centro",
+    "descripcion": "Casa amplia",
+    "marca": "Inmobiliaria XYZ",
+    "precio": 250000.00,
+    "categoria": 1
+  }'
+```
+
+```bash Update Product
+curl -X PUT "http://localhost:8080/api/producto/actualizar/1" \
+  -H "Content-Type: application/json" \
+  -d '{"nombre": "Casa Renovada", "precio": 275000.00}'
+```
+
+```bash Delete Product
+curl -X DELETE "http://localhost:8080/api/producto/1"
+```
+
+```bash Get Summary
+curl "http://localhost:8080/api/producto/resumen"
+```
+</CodeGroup>
+
+## Common Integration Issues
+
+<AccordionGroup>
+<Accordion title="CORS Errors" icon="shield-exclamation">
+
+**Symptom:** Browser console shows CORS policy error
+
+**Solution:** Configure backend to allow frontend origin:
+
+```java Backend Configuration (Spring Boot)
+@Configuration
+public class CorsConfig {
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/api/**")
+                    .allowedOrigins("http://localhost:5500")
+                    .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                    .allowedHeaders("*");
+            }
+        };
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="404 Not Found" icon="magnifying-glass-minus">
+
+**Symptom:** API returns 404 for valid endpoints
+
+**Possible Causes:**
+1. Backend not running on `http://localhost:8080`
+2. Incorrect endpoint path in JavaScript
+3. Backend context path is different
+
+**Solution:**
+- Verify backend is running: `curl http://localhost:8080/api/producto/listar`
+- Check backend logs for actual endpoint paths
+- Update frontend configuration if backend URL differs
+
+</Accordion>
+
+<Accordion title="Empty Response" icon="circle-question">
+
+**Symptom:** API call succeeds but returns empty array
+
+**Debugging:**
+```javascript
+fetch(url)
+  .then(response => {
+    console.log('Status:', response.status);
+    return response.json();
+  })
+  .then(data => {
+    console.log('Response:', data);
+    console.log('Is Array:', Array.isArray(data));
+    console.log('Has content:', data.content);
+  });
+```
+
+**Common Issues:**
+- Database is empty (seed some data)
+- Pagination parameters are incorrect
+- Filters are too restrictive
+
+</Accordion>
+
+<Accordion title="Network Errors" icon="wifi-slash">
+
+**Symptom:** "Failed to fetch" or "Network error"
+
+**Checklist:**
+- [ ] Backend server is running
+- [ ] Backend is accessible at configured URL
+- [ ] No firewall blocking requests
+- [ ] HTTPS/HTTP protocol matches between frontend and backend
+
+**Test Backend Manually:**
+```bash
+curl -v http://localhost:8080/api/producto/listar
+```
+
+</Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Error Handling" icon="shield-check">
+    Always check `response.ok` and handle both validation errors and generic errors separately
+  </Card>
+  
+  <Card title="User Feedback" icon="comment">
+    Show clear, specific error messages to users using field-level validation feedback
+  </Card>
+  
+  <Card title="Loading States" icon="spinner">
+    Consider adding loading indicators during API calls for better UX
+  </Card>
+  
+  <Card title="Data Validation" icon="check-double">
+    Validate data on frontend before sending to reduce unnecessary API calls
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Project Structure" icon="folder-tree" href="/development/project-structure">
+    Learn about the codebase organization
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/development/configuration">
+    Configure backend URLs and settings
+  </Card>
+</CardGroup>

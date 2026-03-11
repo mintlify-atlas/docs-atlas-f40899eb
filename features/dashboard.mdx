@@ -1,0 +1,532 @@
+---
+title: 'Dashboard'
+description: 'Real-time analytics and statistics dashboard showing product inventory metrics, category distribution, and pricing insights'
+---
+
+## Overview
+
+The Dashboard provides a comprehensive view of your product inventory with real-time statistics, category breakdowns, and key metrics. Data automatically refreshes every 30 seconds to ensure you always have current information.
+
+<Note>
+  The dashboard fetches data from the `/api/producto/resumen` endpoint and automatically updates every 30 seconds to provide real-time insights.
+</Note>
+
+## Dashboard Features
+
+<CardGroup cols={2}>
+  <Card title="Key Metrics" icon="gauge-high">
+    Total products, categories, inventory value, and average price
+  </Card>
+  <Card title="Category Analysis" icon="chart-pie">
+    Breakdown of inventory by active/inactive categories
+  </Card>
+  <Card title="Product Insights" icon="ranking-star">
+    Highest and lowest priced products
+  </Card>
+  <Card title="Distribution Chart" icon="chart-bar">
+    Visual representation of products per category
+  </Card>
+</CardGroup>
+
+## Main Statistics
+
+### Fetching Summary Data
+
+The dashboard retrieves comprehensive statistics from the backend:
+
+```javascript
+async function obtenerResumen() {
+  try {
+    const response = await fetch("http://localhost:8080/api/producto/resumen");
+    
+    if (!response.ok) {
+      throw new Error("Error al obtener el resumen");
+    }
+    
+    const data = await response.json();
+    renderizarResumen(data);
+  } catch (error) {
+    console.error("Error al cargar el resumen:", error);
+    mostrarError();
+  }
+}
+```
+
+### Auto-Refresh
+
+The dashboard automatically updates every 30 seconds:
+
+```javascript
+// Initial load
+obtenerResumen();
+
+// Update statistics every 30 seconds
+setInterval(obtenerResumen, 30000);
+```
+
+<Tip>
+  The 30-second refresh interval ensures data stays current without requiring manual page refreshes. This is particularly useful when monitoring inventory changes in real-time.
+</Tip>
+
+## Key Metrics Cards
+
+The dashboard displays four primary statistics in card format:
+
+### Total Products
+
+<Card title="Total Productos" icon="box-seam">
+  Displays the total number of products in the inventory across all categories.
+</Card>
+
+### Total Categories
+
+<Card title="Total Categorías" icon="tags">
+  Shows the total number of categories (both active and inactive) in the system.
+</Card>
+
+### Inventory Value
+
+<Card title="Valor Inventario" icon="currency-dollar">
+  The combined value of all products in inventory, formatted as Colombian Pesos (COP).
+</Card>
+
+### Average Price
+
+<Card title="Precio Promedio" icon="calculator">
+  The average price across all products, formatted as currency.
+</Card>
+
+## Rendering Statistics
+
+The `renderizarResumen()` function populates all dashboard elements:
+
+```javascript
+function renderizarResumen(data) {
+  // Main statistics
+  document.getElementById("resTotalProductos").textContent =
+    data.totalProductos || 0;
+  document.getElementById("resTotalCategorias").textContent =
+    data.totalCategorias || 0;
+  document.getElementById("resInventario").textContent = formatearMoneda(
+    data.valorInventario || 0
+  );
+  document.getElementById("resPromedio").textContent = formatearMoneda(
+    data.precioPromedio || 0
+  );
+
+  // Inventory by category status
+  document.getElementById("resInventarioActivo").textContent = formatearMoneda(
+    data.valorInventarioCategoriasActivas || 0
+  );
+  document.getElementById("resInventarioInactivo").textContent =
+    formatearMoneda(data.valorInventarioCategoriasInactivas || 0);
+
+  // Most expensive product
+  if (data.productoMasCaro) {
+    document.getElementById("resMasCaroNombre").textContent =
+      data.productoMasCaro.nombre;
+    document.getElementById("resMasCaroPrecio").textContent = formatearMoneda(
+      data.productoMasCaro.precio
+    );
+  }
+
+  // Cheapest product
+  if (data.productoMasBarato) {
+    document.getElementById("resMasBaratoNombre").textContent =
+      data.productoMasBarato.nombre;
+    document.getElementById("resMasBaratoPrecio").textContent = formatearMoneda(
+      data.productoMasBarato.precio
+    );
+  }
+
+  // Products by category
+  renderizarProductosPorCategoria(data.productosPorCategoria || []);
+}
+```
+
+## Currency Formatting
+
+All monetary values are formatted as Colombian Pesos:
+
+```javascript
+function formatearMoneda(valor) {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(valor);
+}
+```
+
+<Note>
+  The `Intl.NumberFormat` API formats currency according to Colombian standards, displaying values like "$1.500.000" for 1,500,000 pesos.
+</Note>
+
+## Category Breakdown
+
+### Active vs Inactive Categories
+
+The dashboard shows inventory value split by category status:
+
+<Tabs>
+  <Tab title="Active Categories">
+    **Categorías Activas**
+    
+    Displays the total inventory value for products in active categories. This represents products available for normal operations.
+    
+    ```javascript
+    document.getElementById("resInventarioActivo").textContent = 
+      formatearMoneda(data.valorInventarioCategoriasActivas || 0);
+    ```
+    
+    Shown with a green success indicator.
+  </Tab>
+  
+  <Tab title="Inactive Categories">
+    **Categorías Inactivas**
+    
+    Shows the total inventory value for products in inactive categories. This helps track discontinued or phased-out product lines.
+    
+    ```javascript
+    document.getElementById("resInventarioInactivo").textContent = 
+      formatearMoneda(data.valorInventarioCategoriasInactivas || 0);
+    ```
+    
+    Shown with a red danger indicator.
+  </Tab>
+</Tabs>
+
+## Product Highlights
+
+### Most Expensive Product
+
+Displays the highest-priced product in inventory:
+
+```javascript
+if (data.productoMasCaro) {
+  document.getElementById("resMasCaroNombre").textContent =
+    data.productoMasCaro.nombre;
+  document.getElementById("resMasCaroPrecio").textContent = formatearMoneda(
+    data.productoMasCaro.precio
+  );
+}
+```
+
+<Card title="Product Details" icon="arrow-up-circle">
+  Shows both the product name and its price, formatted as currency. Displayed with a green border and success styling.
+</Card>
+
+### Most Affordable Product
+
+Displays the lowest-priced product in inventory:
+
+```javascript
+if (data.productoMasBarato) {
+  document.getElementById("resMasBaratoNombre").textContent =
+    data.productoMasBarato.nombre;
+  document.getElementById("resMasBaratoPrecio").textContent = formatearMoneda(
+    data.productoMasBarato.precio
+  );
+}
+```
+
+<Card title="Product Details" icon="arrow-down-circle">
+  Shows both the product name and its price, formatted as currency. Displayed with a blue border and primary styling.
+</Card>
+
+## Product Distribution by Category
+
+The dashboard visualizes how products are distributed across categories with progress bars and percentages.
+
+### Rendering Distribution
+
+```javascript
+function renderizarProductosPorCategoria(productos) {
+  const contenedor = document.getElementById("resPorCategoria");
+
+  if (!productos || productos.length === 0) {
+    contenedor.innerHTML = '<p class="text-muted">No hay datos disponibles</p>';
+    return;
+  }
+
+  // Calculate total for percentages
+  const total = productos.reduce((sum, item) => sum + item.cantidad, 0);
+
+  contenedor.innerHTML = productos
+    .map((item) => {
+      const porcentaje =
+        total > 0 ? ((item.cantidad / total) * 100).toFixed(1) : 0;
+
+      return `
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">${item.categoria}</h6>
+                <span class="badge bg-primary">${item.cantidad}</span>
+              </div>
+              <div class="progress" style="height: 20px;">
+                <div class="progress-bar bg-primary" role="progressbar" 
+                     style="width: ${porcentaje}%;" 
+                     aria-valuenow="${porcentaje}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                  ${porcentaje}%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+```
+
+### Distribution Card Features
+
+<Steps>
+  <Step title="Category Name">
+    Displays the category name at the top of each card.
+  </Step>
+  
+  <Step title="Product Count Badge">
+    Shows the number of products in that category with a primary badge.
+  </Step>
+  
+  <Step title="Percentage Bar">
+    Visual progress bar showing the percentage of total products in this category.
+  </Step>
+  
+  <Step title="Percentage Label">
+    Numeric percentage displayed inside the progress bar.
+  </Step>
+</Steps>
+
+<Tip>
+  The distribution cards are displayed in a responsive grid that adapts to screen size. On larger screens, three cards appear per row.
+</Tip>
+
+## Error Handling
+
+When the API fails to load, an error alert is displayed:
+
+```javascript
+function mostrarError() {
+  const contenedor = document.querySelector("main .container");
+
+  const alerta = document.createElement("div");
+  alerta.className = "alert alert-danger alert-dismissible fade show";
+  alerta.innerHTML = `
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>Error:</strong> No se pudo cargar el resumen del inventario.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+
+  contenedor.insertBefore(alerta, contenedor.firstChild);
+}
+```
+
+<Warning>
+  If the API is unavailable or returns an error, the dashboard displays a dismissible alert at the top of the page. The alert includes an icon, error message, and close button.
+</Warning>
+
+## Dashboard Data Structure
+
+The API returns a JSON object with this structure:
+
+```json
+{
+  "totalProductos": 150,
+  "totalCategorias": 12,
+  "valorInventario": 15000000,
+  "precioPromedio": 100000,
+  "valorInventarioCategoriasActivas": 13500000,
+  "valorInventarioCategoriasInactivas": 1500000,
+  "productoMasCaro": {
+    "nombre": "Premium Product",
+    "precio": 500000
+  },
+  "productoMasBarato": {
+    "nombre": "Budget Product",
+    "precio": 10000
+  },
+  "productosPorCategoria": [
+    {
+      "categoria": "Electronics",
+      "cantidad": 45
+    },
+    {
+      "categoria": "Home Goods",
+      "cantidad": 32
+    }
+  ]
+}
+```
+
+## UI Layout
+
+The dashboard uses a card-based layout with Bootstrap styling:
+
+### Main Statistics Row
+
+<CardGroup cols={4}>
+  <Card title="Products" icon="box-seam">
+    Blue icon, displays total product count
+  </Card>
+  <Card title="Categories" icon="tags">
+    Green icon, displays total category count
+  </Card>
+  <Card title="Inventory" icon="currency-dollar">
+    Yellow icon, displays total inventory value
+  </Card>
+  <Card title="Average" icon="calculator">
+    Light blue icon, displays average price
+  </Card>
+</CardGroup>
+
+### Category Status Row
+
+Two cards showing active and inactive category inventory values side by side.
+
+### Product Highlights Row
+
+Two cards displaying the most expensive and most affordable products.
+
+### Distribution Section
+
+Full-width card with header containing a grid of category distribution cards.
+
+## Visual Design
+
+<Tabs>
+  <Tab title="Color Scheme">
+    - **Primary (Blue)**: Main actions and progress bars
+    - **Success (Green)**: Active categories and highest price
+    - **Danger (Red)**: Inactive categories
+    - **Warning (Yellow)**: Inventory value
+    - **Info (Light Blue)**: Average price
+  </Tab>
+  
+  <Tab title="Icons">
+    Uses Bootstrap Icons throughout:
+    - `bi-box-seam`: Products
+    - `bi-tags-fill`: Categories
+    - `bi-currency-dollar`: Prices
+    - `bi-calculator`: Calculations
+    - `bi-check-circle-fill`: Active status
+    - `bi-x-circle-fill`: Inactive status
+    - `bi-arrow-up-circle-fill`: Highest price
+    - `bi-arrow-down-circle-fill`: Lowest price
+    - `bi-pie-chart-fill`: Distribution
+  </Tab>
+  
+  <Tab title="Cards">
+    All cards use:
+    - Shadow for depth (`shadow-sm`)
+    - No borders (`border-0`)
+    - Consistent padding
+    - Responsive height (`h-100`)
+  </Tab>
+</Tabs>
+
+## Responsive Design
+
+The dashboard is fully responsive:
+
+- **Desktop**: 4 columns for main stats, 3 columns for distribution
+- **Tablet**: 2 columns for most sections
+- **Mobile**: Single column stacking
+
+<Note>
+  Bootstrap's grid system automatically adjusts the layout based on screen size using `col-md-*` classes.
+</Note>
+
+## Performance Considerations
+
+<Steps>
+  <Step title="Efficient Updates">
+    Only updates the DOM elements that change, rather than re-rendering the entire page.
+  </Step>
+  
+  <Step title="Error Resilience">
+    Continues attempting to fetch data even after errors, ensuring the dashboard recovers from temporary API issues.
+  </Step>
+  
+  <Step title="Optimized Rendering">
+    Uses template literals and `map()` for efficient HTML generation.
+  </Step>
+  
+  <Step title="Smart Defaults">
+    Displays "0" or default values when data is missing, preventing layout shifts.
+  </Step>
+</Steps>
+
+## Best Practices
+
+<Tip>
+  - Monitor the dashboard regularly to track inventory trends
+  - Use the active/inactive breakdown to identify product categories that need attention
+  - Review the most expensive and cheapest products to ensure pricing strategy alignment
+  - Watch the category distribution to maintain balanced inventory
+  - If errors occur frequently, check API connectivity and backend status
+</Tip>
+
+## Integration Points
+
+The dashboard integrates with:
+
+### Product API
+- **Endpoint**: `GET /api/producto/resumen`
+- **Response**: Complete summary statistics
+- **Refresh**: Every 30 seconds
+
+### Category System
+- Displays active vs inactive category values
+- Shows product distribution across all categories
+
+## Related Pages
+
+<CardGroup cols={2}>
+  <Card title="Product Management" icon="box" href="/features/product-management">
+    View and manage individual products
+  </Card>
+  <Card title="Category Management" icon="tags" href="/features/category-management">
+    Manage product categories and status
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Dashboard shows all zeros">
+    This typically means:
+    - The API is not reachable
+    - No products exist in the database
+    - The backend service is down
+    
+    Check the browser console for error messages and verify the API endpoint is accessible.
+  </Accordion>
+  
+  <Accordion title="Statistics not updating">
+    If the dashboard loads initially but doesn't refresh:
+    - Check browser console for interval errors
+    - Verify the API is responding to subsequent requests
+    - Check for JavaScript errors that may have stopped execution
+  </Accordion>
+  
+  <Accordion title="Currency not formatting correctly">
+    Ensure:
+    - The browser supports `Intl.NumberFormat`
+    - The locale string "es-CO" is valid
+    - Values are numeric (not strings)
+  </Accordion>
+  
+  <Accordion title="Distribution section empty">
+    This occurs when:
+    - No products exist
+    - The `productosPorCategoria` array is empty
+    - Categories have no products assigned
+  </Accordion>
+</AccordionGroup>
